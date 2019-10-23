@@ -17,15 +17,18 @@ import shutil
 from alphabet_detector import AlphabetDetector
 import difflib
 import pathlib
-from .Collection import Collection
+from VC_collections.Collection import Collection
+from VC_collections.columns import drop_col_if_exists
 
 import timeit
-collection = Collection
+
+from VC_collections.files import get_branch_colletionID
 
 
 def main():
     start_time = timeit.default_timer()
-
+    print(get_branch_colletionID())
+    # collection = Collection()
 
 
 if __name__ == '__main__':

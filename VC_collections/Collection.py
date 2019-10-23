@@ -1,24 +1,20 @@
 import logging
 import os
-import sys
 import time
 from datetime import datetime
 from pathlib import Path
 from shutil import copyfile
 
-from VC_collections import drop_col_if_exists
 import pandas as pd
 from alphabet_detector import AlphabetDetector
 from pymarc import XMLWriter, Record, Field
 
 from .files import create_directory
 
-project_branches = ['Architect', 'Dance', 'Design', 'Theater']
-
 
 def initialize_logging(reports_path, collection_id):
     logging.basicConfig(level=logging.INFO,
-                        filename=reports_path / (collection_id+'.log'),
+                        filename=reports_path / (collection_id + '.log'),
                         filemode='w',
                         format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
                         datefmt='%y-%m-%d %H:%M',
@@ -28,14 +24,34 @@ def initialize_logging(reports_path, collection_id):
 
 
 class Collection:
+    _project_branches = ['Architect', 'Dance', 'Design', 'Theater']
+    _catalog_sheets = {'df_catalog': 'קטלוג',
+                       'df_collection': 'אוסף',
+                       'df_personalities': 'אישים',
+                       'df_corporation': 'מוסדות'}
+
+    @classmethod
+    def branches(cls):
+        return cls._project_branches
+
+    @classmethod
+    def catalog_sheets(cls):
+        return cls._catalog_sheets
 
     def fetch_data(self):
         """
         :rtype: object
 
         """
+        catalog_dfs = {}
 
         def get_works_sheet(xl, branch):
+            """
+
+            :param xl:
+            :param branch:
+            :return:
+            """
             works_sheets = [x for x in xl.sheet_names if 'יצירות' in x]
             if 'יצירות' in works_sheets:
                 return 'יצירות'
@@ -43,7 +59,7 @@ class Collection:
                 assert ('יצירות - מחול' in xl.sheet_names), ' sheet יצירות - מחול does not exist in file.'
                 return 'יצירות - מחול'
             elif 'Architect' in branch:
-                assert ('יצירות - אדריכלות' in xl.sheet_names or 'יצירות' in xl.sheet_names),\
+                assert ('יצירות - אדריכלות' in xl.sheet_names or 'יצירות' in xl.sheet_names), \
                     ' sheet יצירות - אדריכלות does not exist in file.'
                 return 'יצירות - מחול'
             elif 'Theater' in branch:
@@ -53,24 +69,22 @@ class Collection:
             else:
                 return ''
 
-        def clean_raw_table(df_catalog):
+        def get_sheet(xl, sheet):
             """
-                initial cleanup of the row catalog
-            :param df_catalog: the original fetched row collection catalog dataframe
-            :return df_catalog: the cleaned collection catalog dataframe
-            """
-            df_catalog = df_catalog.rename(columns={'סימול/מספר מזהה': 'סימול'})
-            df_catalog = df_catalog.fillna('')
-            if df_catalog.iloc[0].str.contains('שדה חובה!!').any() or df_catalog.iloc[0].str.contains('שדה חובה').any():
-                df_catalog = df_catalog[1:]
-            return df_catalog
 
-        def remove_unnecessary_columns(df_catalog):
-            if 'סימול אב' in list(df_catalog.columns) and 'ROOTID' in list(df.columns):
-                print("yes")
-                df_catalog = drop_col_if_exists(df_catalog, 'ROOTID')
+            :param xl:
+            :param sheet:
+            :return:
+            """
+            assert (sheet in xl.sheet_names), f'sheet {sheet} does not exist in file.'
+            return xl.parse(sheet)
 
         def make_catalog_copy(file_path=None):
+            """
+
+            :param file_path:
+            :return:
+            """
             for file in os.listdir(self.data_path_raw):
                 filename = os.fsdecode(file)
                 ext = Path(file).suffix
@@ -81,15 +95,13 @@ class Collection:
                     copyfile(file_path, new_file)
                     return new_file
 
-
         xl = pd.ExcelFile(make_catalog_copy())
-        assert ('קטלוג' in xl.sheet_names), logging.CRITICAL(f'קטלוג is not a sheet in {self.data_path_raw}')
-        df_catalog = xl.parse('קטלוג')
+        for table, sheet in Collection.catalog_sheets().items():
+            catalog_dfs[sheet] = get_sheet(xl, sheet)
+        # add WORKS sheet to dfs
+        catalog_dfs['יצירות'] = (xl.parse(get_works_sheet(xl, self.branch)))
 
-        df_works_original = xl.parse(get_works_sheet(xl, self.branch))
-        df_catalog = clean_raw_table(df_catalog)
-
-        return df_catalog, df_works_original
+        return catalog_dfs
 
     def __init__(self, CMS, branch, collection_id):
         """
@@ -102,7 +114,7 @@ class Collection:
         self.CMS = CMS
         self.branch = branch
         self.collection_id = collection_id
-
+        self.dt_now = datetime.now().strftime('%Y%m%d')
 
         # create directory and sub-folders for collection
         self.BASE_PATH = Path.cwd() / ('VC-' + branch) / collection_id
@@ -113,39 +125,40 @@ class Collection:
         self.authorities_path, self.aleph_custom21, self.aleph_manage18, \
         self.aleph_custom04 = create_directory(CMS, self.BASE_PATH)
 
+        print(self.data_path, '\n', self.data_path_raw, '\n', self.data_path_processed, '\n', \
+              self.data_path_reports, '\n', self.copyright_path, '\n', self.digitization_path, '\n', \
+              self.authorities_path, '\n', self.aleph_custom21, '\n', self.aleph_manage18, '\n', \
+              self.aleph_custom04)
+
         # set up logger for collection instance
         self.logger = initialize_logging(self.data_path_reports, collection_id)
 
-        print(self.data_path, '\n', self.data_path_raw, '\n',self.data_path_processed,'\n', \
-        self.data_path_reports,'\n', self.copyright_path, '\n',self.digitization_path, '\n',\
-        self.authorities_path,'\n', self.aleph_custom21,'\n', self.aleph_manage18, '\n',\
-        self.aleph_custom04)
+        catalog_dfs = self.fetch_data()
+        self.whole_catalog = catalog_dfs
+        self.df_catalog = self.whole_catalog['קטלוג']
+        self.df_collection = self.whole_catalog['אוסף']
+        self.df_personalities = self.whole_catalog['אישים']
+        self.df_corporation = self.whole_catalog['מוסדות']
 
-        self.df_catalog, self.df_works_original = self.fetch_data()
-
-
-
-    def create_MARC_XML(self, branch, collection_id, dt_now=datetime.now()):
+    @property
+    def create_MARC_XML(self):
         """
         Creates a MARC XML format file from the given dataframe
-        :param dt_now:
-        :param branch: The project branch (Architect, Dance, Design, Theater)
-        :param collection_id: The Collection ID (call number)
-        :param self: the modiefied
+        :return:
         """
-        output_file = Path.cwd() / branch / collection_id / 'Data' / 'Processed' / (
-                collection_id + '_final_' + dt_now + ".xml")
+
+        output_file = self.data_path_processed / (self.collection_id + '_final_' + self.dt_now + ".xml")
         writer = XMLWriter(open(output_file, 'wb'))
         start_time = time.time()
         counter = 1
 
-        for index, row in self.iterrows():
+        for index, row in self.df.iterrows():
 
             record = Record()
 
-            if self.index.dtype == 'float64':
+            if self.df.index.dtype == 'float64':
                 ident = "00{}".format(str(index)[:-2])
-            elif self.index.dtype == 'int64':
+            elif self.df.index.dtype == 'int64':
                 ident = "00{}".format(str(index))
                 # print('original:', index, '001:', ident)
 
@@ -192,7 +205,7 @@ class Collection:
                 else:
                     ind = [col[3], col[4]]
 
-                # extract subfields
+                # extract sub-fields
                 subfields_data = list()
                 subfields_prep = list(filter(None, row[col].split('$$')))
                 for subfield in subfields_prep:
@@ -221,25 +234,24 @@ class Collection:
 
         return counter, run_time
 
-    def create_marc_seq_file(df, collection_id, path):
+    def create_marc_seq_file(self):
         """
         function to transform a MARC formatted Dataframe into a MARC sequantial file
-        :param collection_id:  The Collection ID Ca
-        :param df: The Dataframe to transform to MARC sequantial file
-        :param path:
+
         """
 
         ad = AlphabetDetector()
+        output_file_name = self.data_path_processed / (self.collection_id + '_final_' + self.dt_now + '.txt')
 
-        with open(os.path.join(path, collection_id + '_finalAleph_' + dt_now + '.txt'), 'w', encoding="utf8") as f:
-            for index, row in df.iterrows():
+        with open(output_file_name, 'w', encoding="utf8") as f:
+            for index, row in self.df.iterrows():
                 if df.index.dtype == 'float64':
                     ident = "00{}".format(str(index)[:-2])
-                elif df.index.dtype == 'int64':
+                elif self.df.index.dtype == 'int64':
                     ident = "00{}".format(str(index))
 
                 f.write("{} {} {} {}".format(ident, "{:<5}".format('001'), 'L', ident) + '\n')
-                for col in df:
+                for col in self.df:
                     # if field is empty, skip
                     if str(row[col]) == '':
                         continue
@@ -263,10 +275,10 @@ class Collection:
                     # write to file
                     f.write(line)
 
-    def write_to_excel(df, path, sheets):
+    def write_to_excel(self, path, sheets):
         """
         creates a excel file of a given dataframe
-        :param df: the dateframe or a list of dataframes to write to excel
+        :param self: the dateframe or a list of dataframes to write to excel
         :param path: the path name of the output file, or a list of sheets
         :param sheets: can be a list of sheet or
         """
@@ -275,13 +287,13 @@ class Collection:
         writer = pd.ExcelWriter(path, engine='xlsxwriter')
 
         # Convert the dataframe to an XlsxWriter Excel object.
-        if type(df) is list and type(sheets) is list:
+        if type(self) is list and type(sheets) is list:
             i = 0
-            for frame in df:
+            for frame in self:
                 frame.to_excel(writer, sheet_name=sheets[i])
                 i += 1
         else:
-            df.to_excel(writer, sheet_name=sheets)
+            self.to_excel(writer, sheet_name=sheets)
 
         writer.close()
 
@@ -291,7 +303,7 @@ class Collection:
             branch = str(branch)
             if branch[0].islower():
                 branch = branch.capitalize()
-            if branch not in project_branches:
+            if branch not in Collection.project_branches:
                 print('need to choose one of: Architect, Design, Dance, Theater')
                 continue
             else:
@@ -305,7 +317,7 @@ class Collection:
         while True:
             collection_id = input("please enter the Collection ID:")
             if not collection_id:
-                print("Please enter a collectionID.")
+                print("Please enter a collection ID.")
             else:
                 # we're happy with the value given.
                 break
@@ -320,6 +332,15 @@ class Collection:
                 # we're happy with the value given.
                 break
             self.CMS = CMS
+
+    def clean_catalog(self):
+        """
+            initial cleanup of the row catalog
+        """
+        df_catalog = self.catalog.rename(columns={'סימול/מספר מזהה': 'סימול'})
+        df_catalog = df_catalog.fillna('')
+        if df_catalog.iloc[0].str.contains('שדה חובה!!').any() or df_catalog.iloc[0].str.contains('שדה חובה').any():
+            df_catalog = df_catalog[1:]
 
 
 def write_log(text, log_file):

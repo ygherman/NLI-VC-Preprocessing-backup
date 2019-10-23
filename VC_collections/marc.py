@@ -6,14 +6,15 @@ import alphabet_detector
 import dateutil
 from fuzzywuzzy import process
 
+from data.project import get_root_title
 from .AuthorityFiles import *
-from .authority import is_corp, is_pers, find_name, find_role
-from .authority import map_role_to_relator
-from .column import drop_col_if_exists, column_exists, remove_duplicate_in_column
-from .data.project import get_root_title
-from .data.value import clean_text, find_nth
-from .data.value import replace_lst_dict
-from .explode import explode_col_to_new_df
+from .authorities import is_corp, is_pers, find_name, find_role
+from .authorities import map_role_to_relator
+from column import drop_col_if_exists, column_exists, remove_duplicate_in_column
+
+from data.value import clean_text, find_nth
+from data.value import replace_lst_dict
+explode_col_to_new_df
 
 # ROOTID finder
 ROOTID_finder = lambda x: x[:find_nth(x, '-', x.count('-'))] if '-' in x else ''

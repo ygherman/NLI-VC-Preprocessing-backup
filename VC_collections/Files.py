@@ -280,3 +280,41 @@ def write_excel(df, path, sheets):
         df.to_excel(writer, sheet_name=sheets)
 
     writer.close()
+
+
+def get_branch_colletionID(branch='', collectionID='', batch=False):
+    """
+        Get Branch and CollectionID from user
+    :param branch: the branch (Architect, Dance, Design or Theater
+    :param collectionID: The collection ID
+    :param batch: if the calling results from a batch process
+    :return: The branch and the collection ID
+    """
+    if not batch:
+        while True:
+            CMS = input("Preprecessing for Aleph - write 'Aleph'; Preprocessing for Alma - write 'Alma")
+            CMS = CMS.lower()
+
+            branch = input("Please enter the name of the Branch (Architect, Design, Dance, Theater): ")
+            branch = str(branch)
+            if branch[0].islower():
+                branch = branch.capitalize()
+            if branch not in ['Dance', 'Architect', 'Theater', 'Design']:
+                print('need to choose one of: Architect, Design, Dance, Theater')
+                continue
+            else:
+                # we're happy with the value given.
+                branch = 'VC-' + branch
+                break
+
+        while True:
+            collectionID = input("please enter the Collection ID:")
+            if not collectionID:
+                print("Please enter a collectionID.")
+            else:
+                # we're happy with the value given.
+                break
+    elif batch:
+        return 'VC-' + branch, collectionID
+
+    return CMS, branch, collectionID
