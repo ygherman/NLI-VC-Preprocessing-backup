@@ -6,15 +6,14 @@ import alphabet_detector
 import dateutil
 from fuzzywuzzy import process
 
-from data.project import get_root_title
+from ..data.project import get_root_title
 from .AuthorityFiles import *
 from .authorities import is_corp, is_pers, find_name, find_role
 from .authorities import map_role_to_relator
-from column import drop_col_if_exists, column_exists, remove_duplicate_in_column
+from .columns import drop_col_if_exists, column_exists, remove_duplicate_in_column
 
-from data.value import clean_text, find_nth
-from data.value import replace_lst_dict
-explode_col_to_new_df
+from ..data.value import clean_text, find_nth
+from .explode import explode_col_to_new_df
 
 # ROOTID finder
 ROOTID_finder = lambda x: x[:find_nth(x, '-', x.count('-'))] if '-' in x else ''
@@ -744,7 +743,6 @@ def create_MARC_597(df, col):
 
 
 def create_MARC_260(df, col, date_cols):
-
     """
         fuction's input is the entire table as a dataframe and constructs the 260 field according to the POST_COPYRIGHT
         file.
@@ -975,9 +973,6 @@ def convert_MARC_996_to_773(df):
     return df
 
 
-
-
-
 def format_cat_date(df):
     """
         convert the date into YYMM format for construction of the 921/933 fields.
@@ -1036,16 +1031,16 @@ def create_MARC_921_933(df):
     print("cat_col:", cat_col)
     print("cat_date_col:", cat_date_col)
 
-    # initiaze 921/933 columns
+    # initialize 921/933 columns
     df['921'] = ''
     # df['933'] = ''
 
     if df[cat_col].str.contains(";").any():
         df['933'] = ''
         df_multi_cat = df[df[cat_col].str.contains(';')]
-        for index, row in df_multi_cat.iterrow():
-            df.loc[index, '933'] = row[cat_col].apply(all_rest_creators)
-            df.loc[index, '921'] = row[cat_col].apply(first_creator)
+        for index, row in df_multi_cat.iterrows():
+            df.loc[index, '921'] = first_creator(row[cat_col])
+            df.loc[index, '933'] = all_rest_creators(row[cat_col])
 
     # map and replace the cataloguer names with the correct names of the controlled vocabulary
     # map and replace the cataloguer names to their Aleph codes
@@ -1058,8 +1053,6 @@ def create_MARC_921_933(df):
         df['933'] = df['933'].map(Authority_instance.cataloger_name_mapper)
         df['933'] = df['933'].map(str) + ' ' + df[cat_col]
         df['933'] = df['933'].apply(lambda x: '$$a' + x)
-
-
 
     return df
 
@@ -1250,7 +1243,8 @@ def create_MARC_336(df):
     :return:
     """
     arch_mat_map_336 = Authority_instance.df_arch_mat_auth.loc[:,
-                       ['ARCHIVAL_MATERIAL', 'rdacontent 336']].set_index('ARCHIVAL_MATERIAL').to_dict()['rdacontent 336']
+                       ['ARCHIVAL_MATERIAL', 'rdacontent 336']].set_index('ARCHIVAL_MATERIAL').to_dict()[
+        'rdacontent 336']
 
     for index, row in df.iterrows():
         lst_336 = row['סוגהחומר'].split(";")
@@ -1308,7 +1302,7 @@ def create_MARC_534(df):
     """
     # create a dataframe as source for mapping media/format values
     df_media_format_mapping = Authority_instance.df_media_format_auth.loc[Authority_instance.df_media_format_auth.index,
-                                                       ['MEDIA_FORMAT', 'MARC21 534']]
+                                                                          ['MEDIA_FORMAT', 'MARC21 534']]
 
     # export media/format mapping DF to dictionary
     arch_media_format_map_534 = pd.Series(df_media_format_mapping['MARC21 534'].values,
@@ -1404,3 +1398,12 @@ def create_MARC_590(df):
         df['590_2'] = df['590_2'].where(df['590_2'] == '$$a', '')
 
     return df
+
+
+def create_MARC_584(df):
+    if column_exists(df, 'ACCURALS') or column_exists(df, 'אוסףפתוח') or column_exists(df, 'אוסף פתוח'):
+        accurals_mapper = {'כן': 'האוסף המקורי ממשיך לצבור חומרים (אוסף פתוח)',
+                           'לא': '$aהאוסף המקורי אינו צובר חומרים חדשים (אוסף סגור)'}
+        df['584'] = df['584'].map(accurals_mapper)
+        df['584'] = df['584'].apply(lambda x: '$a' + x)
+        return df

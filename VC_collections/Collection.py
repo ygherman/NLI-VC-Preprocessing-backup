@@ -15,11 +15,13 @@ from .files import create_directory
 def initialize_logging(reports_path, collection_id):
     logging.basicConfig(level=logging.INFO,
                         filename=reports_path / (collection_id + '.log'),
-                        filemode='w',
                         format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
                         datefmt='%y-%m-%d %H:%M',
                         )
+    fh = logging.FileHandler(filename=reports_path / (collection_id + '.log'))
     logger = logging.getLogger(__name__)
+    logger.addHandler(fh)
+
     return logger
 
 
@@ -79,23 +81,29 @@ class Collection:
             assert (sheet in xl.sheet_names), f'sheet {sheet} does not exist in file.'
             return xl.parse(sheet)
 
-        def make_catalog_copy(file_path=None):
+        def make_catalog_copy(self):
             """
 
             :param file_path:
             :return:
             """
+            print('self.data_path_raw:',self.data_path_raw)
             for file in os.listdir(self.data_path_raw):
+                print('here')
                 filename = os.fsdecode(file)
+                print('filename:', filename)
                 ext = Path(file).suffix
 
                 if 'PRE_FINAL_aleph' in filename:  # this tests for substrings
                     file_path = os.path.join(self.data_path_raw, filename)
+                    print('NEW COPY', filename)
                     new_file = file_path.replace('_aleph', '')
                     copyfile(file_path, new_file)
                     return new_file
 
-        xl = pd.ExcelFile(make_catalog_copy())
+        copy = make_catalog_copy(self)
+        print(copy)
+        xl = pd.ExcelFile(copy)
         for table, sheet in Collection.catalog_sheets().items():
             catalog_dfs[sheet] = get_sheet(xl, sheet)
         # add WORKS sheet to dfs
@@ -117,18 +125,18 @@ class Collection:
         self.dt_now = datetime.now().strftime('%Y%m%d')
 
         # create directory and sub-folders for collection
-        self.BASE_PATH = Path.cwd() / ('VC-' + branch) / collection_id
+        self.BASE_PATH = Path('C:/Users/Yaelg/Google Drive/National_Library/Python') / ('VC-' + branch) / collection_id
 
         # initialize directory with all folder and sub-folders for the collection
         self.data_path, self.data_path_raw, self.data_path_processed, \
         self.data_path_reports, self.copyright_path, self.digitization_path, \
-        self.authorities_path, self.aleph_custom21, self.aleph_manage18, \
-        self.aleph_custom04 = create_directory(CMS, self.BASE_PATH)
+        self.authorities_path, self.aleph_custom21_path, self.aleph_manage18_path, \
+        self.aleph_custom04_path = create_directory(CMS, self.BASE_PATH)
 
         print(self.data_path, '\n', self.data_path_raw, '\n', self.data_path_processed, '\n', \
               self.data_path_reports, '\n', self.copyright_path, '\n', self.digitization_path, '\n', \
-              self.authorities_path, '\n', self.aleph_custom21, '\n', self.aleph_manage18, '\n', \
-              self.aleph_custom04)
+              self.authorities_path, '\n', self.aleph_custom21_path, '\n', self.aleph_manage18_path, '\n', \
+              self.aleph_custom04_path)
 
         # set up logger for collection instance
         self.logger = initialize_logging(self.data_path_reports, collection_id)

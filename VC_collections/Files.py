@@ -2,6 +2,8 @@ import datetime
 import os
 import platform
 from pathlib import Path
+import pandas as pd
+import gspread
 
 
 def make_sure_path_exists(path):
@@ -28,6 +30,7 @@ def create_directory(CMS, BASE_PATH):
             """
     # create a Data Folder
 
+    print('BASE_PATH', BASE_PATH)
     data_path = BASE_PATH / 'Data'
     make_sure_path_exists(data_path)
 
@@ -282,11 +285,11 @@ def write_excel(df, path, sheets):
     writer.close()
 
 
-def get_branch_colletionID(branch='', collectionID='', batch=False):
+def get_branch_colletionID(branch='', collection_id='', batch=False):
     """
         Get Branch and CollectionID from user
     :param branch: the branch (Architect, Dance, Design or Theater
-    :param collectionID: The collection ID
+    :param collection_id: The collection ID
     :param batch: if the calling results from a batch process
     :return: The branch and the collection ID
     """
@@ -304,17 +307,40 @@ def get_branch_colletionID(branch='', collectionID='', batch=False):
                 continue
             else:
                 # we're happy with the value given.
-                branch = 'VC-' + branch
+                
                 break
 
         while True:
-            collectionID = input("please enter the Collection ID:")
-            if not collectionID:
+            collection_id = input("please enter the Collection ID:")
+            if not collection_id:
                 print("Please enter a collectionID.")
             else:
                 # we're happy with the value given.
                 break
     elif batch:
-        return 'VC-' + branch, collectionID
+        return 'VC-' + branch, collection_id
 
-    return CMS, branch, collectionID
+    return CMS, branch, collection_id
+
+
+def create_df_from_gs(spreadsheet, worksheet):
+    """
+    Function gets name of worksheet from a Google Sheet Spreadsheet, and returns it
+    as a pandas DataFrame
+    :param spreadsheet:
+    :param worksheet: The name of the worksheet
+    :return: df - pandas Dataframe of the worksheet
+             cols - list of column names
+    """
+    # create a dataframe from the given worksheet
+    sheet = spreadsheet.worksheet(worksheet)
+    dict_gs = sheet.get_all_records(head=1)
+    #     pprint.pprint(dict_gs)
+    df = pd.DataFrame(dict_gs)
+    cols = list(dict_gs[1].keys())
+    #     print(cols)
+
+    # remove empty rows
+    df.replace(np.nan, '', inplace=True)
+
+    return df, cols

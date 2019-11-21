@@ -29,6 +29,7 @@ import gspread
 import numpy as np
 import pandas as pd
 from oauth2client.service_account import ServiceAccountCredentials
+from  .files import create_df_from_gs
 
 
 def create_df_from_gs(spreadsheet, worksheet):
@@ -115,7 +116,12 @@ class Authority:
     def __init__(self):
         # use creds to create a client to interact with the Google Drive API
         scope = ['https://spreadsheets.google.com/feeds']
-        creds = ServiceAccountCredentials.from_json_keyfile_name('google_drive_api/client_secret.json', scope)
+        try:
+            creds = ServiceAccountCredentials.from_json_keyfile_name('google_drive_api/client_secret.json', scope)
+        except OSError as e:
+            creds = ServiceAccountCredentials.from_json_keyfile_name(r'C:\Users\Yaelg\Google '
+                                                                     r'Drive\National_Library\Python\VC_Preprocessing'
+                                                                     r'\google_drive_api\client_secret.json', scope)
         client = gspread.authorize(creds)
         spreadsheet = client.open_by_url(
             "https://docs.google.com/spreadsheets/d/1736sL9unbiOMbcrIYgSkCSvhU2-LCthSLVtYLPSpZ98")
@@ -140,16 +146,20 @@ class Authority:
         df_languages, languages_cols = create_df_from_gs(spreadsheet, 'שפה')
         df_languages = df_languages.set_index('שם שפה עברית')
 
+        df_level, level_cols = create_df_from_gs(spreadsheet, 'רמת תיאור')
+
         self.df_media_format_auth, self.media_format_mapping_dict = order_media_format(df_media_format_auth)
         self.df_arch_mat_auth, self.arch_mat_mapping_dict = order_archival_material(df_arch_mat_auth)
         self.df_arch_mat_mapping = df_arch_mat_mapping
         self.df_creator_corps_role = df_creator_corps_role
         self.df_creator_pers_role = df_creator_pers_role
+        self.df_cataloguers = df_catalogers
         self.cataloger_name_mapper = cataloger_name_mapper
         self.df_countries = df_countries
         self.df_languages = df_languages
 
         self.roles_dict = roles_dict
+        self.df_level = df_level
 
 
 if __name__ != '__main__':
