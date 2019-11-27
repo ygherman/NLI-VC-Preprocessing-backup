@@ -1,5 +1,6 @@
 import logging
 import os
+import shutil
 import time
 from datetime import datetime
 from pathlib import Path
@@ -94,11 +95,15 @@ class Collection:
                 print('filename:', filename)
                 ext = Path(file).suffix
 
-                if 'PRE_FINAL_aleph' in filename:  # this tests for substrings
+                if 'PRE_FINAL_aleph' in filename or 'APP1' in filename:  # this tests for substrings
                     file_path = os.path.join(self.data_path_raw, filename)
                     print('NEW COPY', filename)
-                    new_file = file_path.replace('_aleph', '')
-                    copyfile(file_path, new_file)
+                    new_file = file_path.replace('_aleph', '_save_copy')
+                    new_file = file_path.replace(' - APP1', '_save_copy')
+                    try:
+                        copyfile(file_path, new_file)
+                    except shutil.SameFileError:
+                        pass
                     return new_file
 
         copy = make_catalog_copy(self)
@@ -106,8 +111,11 @@ class Collection:
         xl = pd.ExcelFile(copy)
         for table, sheet in Collection.catalog_sheets().items():
             catalog_dfs[sheet] = get_sheet(xl, sheet)
-        # add WORKS sheet to dfs
-        catalog_dfs['יצירות'] = (xl.parse(get_works_sheet(xl, self.branch)))
+        # add WORKS sheet to dfs if there is one
+        try:
+            catalog_dfs['יצירות'] = (xl.parse(get_works_sheet(xl, self.branch)))
+        except:
+            pass
 
         return catalog_dfs
 
@@ -345,10 +353,12 @@ class Collection:
         """
             initial cleanup of the row catalog
         """
-        df_catalog = self.catalog.rename(columns={'סימול/מספר מזהה': 'סימול'})
+        df_catalog = self.df_catalog.rename(columns={'סימול/מספר מזהה': 'סימול',
+                                                     'סימול פרויקט':'סימול'})
         df_catalog = df_catalog.fillna('')
         if df_catalog.iloc[0].str.contains('שדה חובה!!').any() or df_catalog.iloc[0].str.contains('שדה חובה').any():
             df_catalog = df_catalog[1:]
+        return df_catalog
 
 
 def write_log(text, log_file):

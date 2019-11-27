@@ -1,23 +1,7 @@
-import numpy as np
-import csv
-import os
-import pandas as pd
-import math
-import re
-import errno
-from collections import defaultdict, Counter
-from fuzzywuzzy import fuzz
-from fuzzywuzzy import process
-import pprint
-from anytree import Node, RenderTree
-from anytree.exporter import DotExporter
-from datetime import datetime
 import sys
-import shutil
-from alphabet_detector import AlphabetDetector
-import difflib
-import pathlib
+from datetime import datetime
 
+sys.path.insert(1, 'C:/Users/Yaelg/Google Drive/National_Library/Python/VC_Preprocessing')
 from VC_collections.Collection import Collection
 from VC_collections.columns import drop_col_if_exists
 
