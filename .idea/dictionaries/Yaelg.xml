@@ -5,10 +5,18 @@
       <w>aleph</w>
       <w>asctime</w>
       <w>aהאוסף</w>
+      <w>clientsecret</w>
       <w>creds</w>
+      <w>cvoc</w>
       <w>dataframe</w>
+      <w>dataframes</w>
       <w>ident</w>
+      <w>persname</w>
+      <w>preprocess</w>
+      <w>relators</w>
       <w>subfields</w>
+      <w>unitid</w>
+      <w>unititle</w>
     </words>
   </dictionary>
 </component>

@@ -1,7 +1,15 @@
 import os
+import pprint
+from collections import defaultdict
+
 import pandas as pd
-from .AuthorityFiles import *
-from .files import write_excel
+from fuzzywuzzy import process
+
+from VC_collections import Collection
+from VC_collections.AuthorityFiles import *
+from VC_collections.columns import clean_text_cols, strip_whitespace_af_semicolon, remove_duplicate_in_column, \
+    drop_col_if_exists, replace_NaN
+from VC_collections.files import write_excel
 
 
 def split_creators_by_type(df, col_name):
@@ -12,12 +20,9 @@ def split_creators_by_type(df, col_name):
 
     :param df: The original Dataframe
     :param col_name:  the column name which contains the creators
-    :return:
+    :return: df: the modified dataframe with two new columns - creators_pers and creators corps
     """
-    #
-    #
-    #
-    #
+
     for index, row in df.iterrows():
         add_pers_creators = []
         add_corps_creators = []
@@ -227,9 +232,10 @@ def find_role(name):
     :return: returns the role of the creator
     :param name: the value of the a creator with a role
     """
+    name = name.strip()
     if '[' in name:
         start = name.find('[') + 1
-        return name[start:-1]
+        return name[start:name.find(']')]
     else:
         return ""
 
@@ -250,9 +256,21 @@ def find_name(name):
         return name.rstrip()
 
 
-# #
+def create_combined_creators(row):
+    if row['FIRST_CREATOR_PERS'] != '':
+        first_creator = str(row['FIRST_CREATOR_PERS']) + ' [' + str(row['TYPE_FIRST_CREATOR_PERS']) + ']'
+    else:
+        first_creator = str(row['FIRST_CREATOR_CORP']) + ' [' + str(row['TYPE_FIRST_CREATOR_CORP']) + ']'
+    add_creators = str(row['ADD_CREATOR_PERS']) + ';' + str(row['ADD_CREATOR_CORPS'])
 
-# In[23]:
+    combined_creators = f'{first_creator};{add_creators}'
+    print(combined_creators)
+
+    combined_creators.rstrip(';')
+    combined_creators.lstrip(';')
+    combined_creators.replace(';;', ';')
+
+    return combined_creators
 
 
 def map_role_to_relator(role, df, lang, mode='PERS'):
@@ -274,3 +292,183 @@ def map_role_to_relator(role, df, lang, mode='PERS'):
             return df.loc[df[df["CREATOR_CROPS_ROLE"] == role].index.item(), 'RELATOR_HEB']
         if lang == 'eng':
             return df.loc[df[df["CREATOR_CROPS_ROLE"] == role].index.item(), 'RELATOR_ENG']
+
+
+def unique_creators(df):
+    """
+        Check that the value in COMBINED_CREATORS do not appear in the CONTROL_ACCESS columns: PERNAME, CORPNAME.
+        Create a new combined creators column which contains only values that do not appear in PERNAME and
+        CORPNAME columns/
+    :param df:
+    :return:
+    """
+    for index, frame in df.iterrows():
+        l1 = str(frame['COMBINED_CREATORS']).split(";")
+        creator_names = set([find_name(x) for x in l1])
+
+        new_persnames = str(frame['PERSNAME']).split(';')
+        new_persnames = list(filter(None, new_persnames))
+        if len(new_persnames) > 0:
+            new_persnames = [x for x in new_persnames if x not in creator_names]
+
+        new_corpsnames = list(filter(None, str(frame['CORPNAME']).split(';')))
+        if len(new_corpsnames) > 0:
+            new_corpsnames = [x for x in new_corpsnames if x not in creator_names]
+
+        df.loc[index, 'PERSNAME'] = ';'.join(new_persnames)
+        df.loc[index, 'CORPNAME'] = ';'.join(new_corpsnames)
+
+    return df
+
+
+def map_relators(collection, df, authority_role_list):
+    """
+
+    :param authority_role_list:
+    :param collection:
+    :return:
+    """
+    df["COMBINED_CREATORS"] = df["COMBINED_CREATORS"].str.strip('\n')
+    df["COMBINED_CREATORS"] = df["COMBINED_CREATORS"].str.rstrip('')
+
+    # initiate empty lists
+    temp_role_dict = defaultdict(list)
+    roles = []
+    role_not_found = []
+
+    indexes_roles_not_found = []
+    for index, row in df.iterrows():
+        for creator in str(row['COMBINED_CREATORS']).strip().split(';'):
+            temp_role = find_role(creator)
+            roles.append(temp_role)
+            if temp_role.strip() not in authority_role_list:
+                indexes_roles_not_found.append((temp_role, index))
+
+    for role_1, index_1 in indexes_roles_not_found:
+        temp_role_dict[role_1].append(index_1)
+
+    # Check which role does not appear in the authority file of creators role (persons and corporates)
+    for role in roles:
+        if role.strip() in authority_role_list:
+            continue
+        else:
+            role_not_found.append(role)
+
+    role_not_found = set(x for x in role_not_found if x != 'nan')
+
+    if len(indexes_roles_not_found) != 0:
+        collection.logger.error(f"[CREATORS] Roles check - list of roles not found in roles authority list:"
+                                f" {'; '.join(role_not_found)}.")
+        print('\n', "indexes_roles_not_found", indexes_roles_not_found)
+
+    return roles, role_not_found, temp_role_dict
+
+
+def correct_relators(collection: Collection, authority_role_list: list,
+                     roles: list,  role_not_found: list,
+                     temp_role_dict: dict):
+    """
+
+    :param collection:
+    :param authority_role_list:
+    :param roles:
+    :param role_not_found:
+    :param temp_role_dict:
+    """
+
+    def create_error_report():
+        """
+
+        """
+        res = [(role,) + item for role in role_not_found for item in
+               process.extract(role, authority_role_list, limit=5)]
+        df_roles = pd.DataFrame(res, columns=['role', 'match', 'match score'])
+        df_indexes_roles_not_found = pd.DataFrame.from_dict(temp_role_dict, orient='index').transpose()
+        df_roles_sheets = ['roles not found', 'example_items']
+
+        dfs_roles_list = [df_roles, df_indexes_roles_not_found]
+
+        roles_check_file_name = collection.collection_id + '_roles_check' + collection.dt_now + '.xlsx'
+        collection.logger.info(f"[ROLES] Creating {collection.collection_id} _roles_check_ "
+                               f"{collection.dt_now}.xlsx file")
+
+        write_excel(dfs_roles_list, os.path.join(collection.authorities_path, roles_check_file_name), df_roles_sheets)
+
+    role_not_found = list(filter(None, role_not_found))
+
+    if len(role_not_found) > 0:
+        for role in role_not_found:
+            collection.logger.info("[ROLES] Printing roles that are not found - and the options for corrections")
+            pprint.pprint(str(role))
+            pprint.pprint(process.extract(str(role), authority_role_list))
+        pprint.pprint(set(role_not_found))
+        create_error_report()
+
+    else:
+        collection.logger.info("[ROLES] all values matched to creator roles controlled vocabulary")
+
+
+def clean_creators(collection: Collection) -> Collection:
+    """
+
+    :param collection:
+    :return:
+    """
+    df = collection.full_catalog
+    df = replace_NaN(df)
+
+    authority_role_list = list(set(Authority_instance.df_creator_corps_role['CREATOR_CROPS_ROLE'])) + \
+                          list(set(Authority_instance.df_creator_pers_role['CREATOR_PERS_ROLE']))
+
+    creators_cols = [col for col in df.columns if "CREATOR" in col]
+    if 'COMBINED_CREATORS' in creators_cols:
+        creators_cols.remove('COMBINED_CREATORS')
+        collection.logger.info("[CREATORS] COMBINED_CREATORS found: 1 creators column")
+        for col in creators_cols:
+            df = drop_col_if_exists(df, col)
+        df = remove_duplicate_in_column(df, 'COMBINED_CREATORS')
+    elif 'FIRST_CREATOR_PERS' in creators_cols:
+        df['COMBINED_CREATORS'] = df[creators_cols].apply(create_combined_creators, axis=1)
+
+    assert 'COMBINED_CREATORS' in list(df.columns), print(list(df.columns))
+
+    roles, role_not_found, temp_role_dict = map_relators(collection, df, authority_role_list)
+    df = clean_text_cols(df, 'COMBINED_CREATORS')
+    df = strip_whitespace_af_semicolon(df, 'COMBINED_CREATORS')
+
+    df = unique_creators(df)
+    correct_relators(collection, authority_role_list, roles, role_not_found, temp_role_dict)
+    collection.full_catalog = df
+
+    return collection
+
+
+def check_values_against_cvoc(collection: Collection, df: pd.DataFrame, col: str, mapping_dict: dict) -> list:
+    """
+
+    :param collection:
+    :param df:
+    :param col:
+    :param mapping_dict:
+    :return:
+    """
+    collection.logger.info(f"[{col.upper()}] Checking Value in {col} column against Controlled Vocabulary.")
+
+    arch_test = list(set(df[col].tolist()))
+    new_arch = ';'.join(arch_test)
+    # new_arch = list(set(new_arch.split(";")))
+    new_arch = list(filter(None, new_arch))  # fastest
+    # new_arch = list(set(new_arch))
+
+    # declare empty list to save the values that don't exist in CVOC
+    error_values = list()
+
+    for item in new_arch:
+        best, score = process.extractOne(item, list(mapping_dict.keys()))
+        if best == item:
+            continue
+        else:
+            error_values.append(item)
+    # if all('' == s or s.isspace() for s in test_655):
+
+    return error_values

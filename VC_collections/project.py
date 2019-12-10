@@ -26,7 +26,7 @@ import os
 
 import pandas as pd
 
-from .value import clean_text, find_nth
+from VC_collections.value import clean_text, find_nth
 
 # ROOTID finder
 ROOTID_finder = lambda x: x[:find_nth(x, '-', x.count('-'))] if '-' in x else ''
@@ -167,3 +167,6 @@ def get_collection_paths(collectionID):
     """
 
     return ""
+
+
+

@@ -2,9 +2,16 @@ import datetime
 import os
 import platform
 from pathlib import Path
-import pandas as pd
-import gspread
 
+import numpy as np
+import pandas as pd
+
+
+def get_google_drive_api_path(path):
+    parent = path.parent
+    for x in parent.iterdir():
+        if x.is_dir() and x != path:
+            yield x
 
 def make_sure_path_exists(path):
     """
@@ -19,15 +26,15 @@ def make_sure_path_exists(path):
 
 def create_directory(CMS, BASE_PATH):
     """
-                reate Directory structure
-            :param branch: the brach name (Architect, Dance, Design or Theater)
-            :param collectionID: the ID of the collection
-            :return: returns the paths to the directories that were created:
-                    data_path, data_path_raw, data_path_processed,
-                    data_path_reports, copyright_path, digitization_path,
-                    authorities_path, aleph_custom21, aleph_manage18, aleph_custom04
+        creates Directory structure
+    :param CMS: the brach name (Architect, Dance, Design or Theater)
+    :param BASE_PATH: the ID of the collection
+    :return: returns the paths to the directories that were created:
+            data_path, data_path_raw, data_path_processed,
+            data_path_reports, copyright_path, digitization_path,
+            authorities_path, aleph_custom21, aleph_manage18, aleph_custom04
 
-            """
+    """
     # create a Data Folder
 
     print('BASE_PATH', BASE_PATH)
@@ -235,7 +242,7 @@ def get_file_path(stage, df, pattern=''):
         """
         a sub-action that checks whether the folder exists and whether it's  empty or not.
         :param dir_path: the path to the directory
-        :param collection: the ID of the collection to look for. this is the root folder of the file structure.
+        :param collection_id: the ID of the collection to look for. this is the root folder of the file structure.
         """
         print('is_folder_empty(dir_path):', is_folder_empty(dir_path))
         if dir_path.is_dir() and not is_folder_empty(dir_path):

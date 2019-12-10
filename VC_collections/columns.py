@@ -1,9 +1,10 @@
-
 import collections
 import pprint
 
 import numpy as np
 import pandas as pd
+
+from VC_collections.fieldmapper import *
 
 
 def column_exists(df, col):
@@ -152,18 +153,71 @@ def strip_whitespace_af_semicolon(df, col):
     :return: the clean dataframe
     """
     df[col] = df[col].apply(str)
-    from data.value import semiColonStriper
+    from VC_collections.value import semiColonStriper
     df[col] = df[col].apply(semiColonStriper)
+    df[col] = df[col].str.replace("; ", ";")
     return df
 
 
-def create_marc_008(df):
-    """
-        for next version of the master table positions 15-17 in 008, need to be populated according to the
-        [מדינת פרסום] field and be mapped to the list of country codes of the LoC
-
-    :param df: the original df
-    :return:
-    """
+def remove_line_breaks(df):
+    # replace all line breaks
+    df = df.replace('\n', ' ', regex=True)
+    df = df.replace(',,', ',', regex=False)
+    df = df.replace(', ,', ', ', regex=False)
     return df
+
+
+def replace_NaN(df):
+    df = df.replace(np.nan, '', regex=True)
+    return df
+
+
+def clean_tables(collection):
+    # replace all NaN values with empty string
+    collection.logger.info(f'Replacing all NaN values with empty string in {collection.collection_id} Catalog records,'
+                           f'applying {replace_NaN.__name__} function.')
+    collection.df_catalog = replace_NaN(collection.df_catalog)
+    collection.logger.info(f'Replacing all NaN values with empty string in {collection.collection_id}, Collection'
+                           f' record, applying {replace_NaN.__name__} function.')
+    collection.df_collection = replace_NaN(collection.df_collection)
+
+    # remove line breaks
+    collection.logger.info(f'Replacing all line breaks in {collection.collection_id}, Catalog records,'
+                           f'applying {remove_line_breaks.__name__} function.')
+    collection.df_catalog = remove_line_breaks(collection.df_catalog)
+    collection.logger.info(f'Replacing all line breaks in {collection.collection_id}, Collection record,'
+                           f'applying {remove_line_breaks.__name__} function.')
+    collection.df_collection = remove_line_breaks(collection.df_collection)
+
+    # clean text columns
+
+    for field in field_types_dict['text']:
+        collection.logger.info(f'[{field}] Cleaning {field} column - Removing whitespaces (applying  {clean_text_cols.__name__} ')
+        if column_exists(collection.df_collection, field) and not is_column_empty(collection.df_collection, field):
+            collection.df_collection = clean_text_cols(collection.df_collection, field)
+        if column_exists(collection.df_catalog, field) and not is_column_empty(collection.df_catalog, field):
+            collection.df_catalog = clean_text_cols(collection.df_catalog, field)
+
+    # clean values columns - rstrip_semicolon, strip_whitespace_af_semicolon
+    for field in field_types_dict['value_list']:
+        collection.logger.info(
+            f'[{field}] Cleaning {field} column - Removing whitespaces (applying  {rstrip_semicolon.__name__} ')
+        if column_exists(collection.df_collection, field) and not is_column_empty(collection.df_collection, field):
+            collection.df_collection = rstrip_semicolon(collection.df_collection, field)
+        if column_exists(collection.df_catalog, field) and not is_column_empty(collection.df_catalog, field):
+            collection.df_catalog = rstrip_semicolon(collection.df_catalog, field)
+
+        collection.logger.info(
+            f'[{field}] Cleaning {field} column - Removing whitespaces (applying  {strip_whitespace_af_semicolon.__name__} ')
+        if column_exists(collection.df_collection, field) and not is_column_empty(collection.df_collection, field):
+            collection.df_collection = strip_whitespace_af_semicolon(collection.df_collection, field)
+        if column_exists(collection.df_catalog, field) and not is_column_empty(collection.df_catalog, field):
+            collection.df_catalog = strip_whitespace_af_semicolon(collection.df_catalog, field)
+
+
+
+
+
+
+    return collection
 

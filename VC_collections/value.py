@@ -117,7 +117,7 @@ semiColonStriper = lambda x: x.rstrip(';')
 # Cleaning Text from special Charecters
 clean_text = lambda x: ''.join(e for e in str(x) if e.isalnum())
 
-# # strip whitespaces function
+# strip whitespaces function
 whiteSpaceStriper = lambda x: x.strip()
 
 

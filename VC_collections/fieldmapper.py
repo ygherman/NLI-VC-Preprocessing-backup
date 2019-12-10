@@ -23,7 +23,7 @@ VERSION
     $
 """
 
-aleph_field_mapper = {'אוסףפתוח': 'ACCURALS',
+field_mapper = {'אוסףפתוח': 'ACCURALS',
                       'ביבליוגרפיהומקורותמידע': 'BIBLIOGRAPHY',
                       'ברקוד': 'BARCODE',
                       'דיגיטציה': 'DIGITIZATION',
@@ -35,7 +35,7 @@ aleph_field_mapper = {'אוסףפתוח': 'ACCURALS',
                       'הערותלאגלוילמשתמש': 'NOTES_HIDDEN',
                       'חומריםקשורים': 'RELATED_MATERIALS',
                       'טכניקה': 'TECHNIQUE',
-                      'יוצריהאוסף': 'COMBINED_CREATORS',
+                      'יוצריהאוסף': 'ADD_CREATOR_PERS',
                       'יוצרים': 'COMBINED_CREATORS',
                       'יוצריםנוספיםאיש': 'ADD_CREATOR_PERS',
                       'יוצריםנוספיםמוסד': 'ADD_CREATOR_CORPS',
@@ -71,7 +71,7 @@ aleph_field_mapper = {'אוסףפתוח': 'ACCURALS',
                       'מספרהמיכל': 'CONTAINER',
                       'מספרהמיכלבונמצאהתיקפריט': 'CONTAINER',
                       'מספרמיכל': 'CONTAINER',
-                      'מספרקבציםלסריקה': 'EST_FILE_NUM',
+                      'מספרקבציםלסריקה': 'EST_FILES_NUM',
                       'מספרקבציםמוערך': 'EST_FILES_NUM',
                       'מקוםהפרסום': 'PUBLICATION_COUNTRY',
                       'נשלחלדיגיטציה': 'DIGITIZATION',
@@ -140,20 +140,14 @@ field_mapper_back = {
     'DIMENSIONS': 'מידות',
     'ARRANGEMENT': 'מידע על סידור החומר',
     'CONTAINER' : 'מיכל',
-    'PERSNAME' : 'מילות מפתח_אישי ליבה',
     'PERSNAME' : 'מילות מפתח_אישים',
-    'CORPNAME' : 'מילות מפתח_ארגונים',
     'WORKS' : 'מילות מפתח_יצירות',
-    'WORKS' : 'מילות מפתח_יצירות ליבה',
     'CORPNAME' : 'מילות מפתח_מוסדות',
-    'CORPNAME' : 'מילות מפתח_מוסדות ליבה',
     'GEOGNAME' : 'מילות מפתח_מקומות',
-    'SUBJECT' : 'מילות מפתח_נושאי ליבה',
     'SUBJECT' : 'מילות מפתח_נושאים',
     'PHYSLOC' : 'מיקום פיזי',
     'DIGITIZATION' : 'מסלול דיגיטציה',
     'EST_FILES_NUM' : 'מספר קבצים מוערך',
-    'PUBLICATION_COUNTRY' : 'מקום הפרסום',
     'COLLECTION_TYPE' : 'סוג אוסף',
     'ARCHIVAL_MATERIAL' : 'סוג חומר',
     'TYPE_FIRST_CREATOR_PERS' : 'סוג יוצר ראשי-איש',
@@ -165,9 +159,7 @@ field_mapper_back = {
     'PUBLIC': 'פומבי',
     'ARCHIV_ID': 'קוד תיק ארכיון',
     'SCALE': 'קנה מידה',
-    'CATALOGUER': 'רושם',
-    'UNITID': 'רמת תיאור',
-    'UNITITLE': 'שם האוסף',
+    'LEVEL': 'רמת תיאור',
     'CATALOGUER': 'שם הרושם',
     'LANGUAGE' : 'שפה',
     'DATE' : 'תאריך חופשי',
@@ -202,7 +194,7 @@ collection_field_mapper = {
     'רמת תיאור': 'LEVEL',
     'שם האוסף': 'UNITITLE',
     'תאריך חופשי': 'DATE',
-    'יוצרי האוסף': 'COMBINED_CREATORS',
+    'יוצרי האוסף': 'ADD_CREATOR_PERS',
     'מילות מפתח_אישי ליבה': 'PERSNAME',
     'מילות מפתח_מוסדות ליבה': 'CORPSNAME',
     'מילות מפתח_יצירות ליבה': 'WORKS',
@@ -222,11 +214,26 @@ collection_field_mapper = {
     'תאריך הרישום': 'DATE_CATALOGING'
 }
 
+field_types_dict = {
+    'date': ['CATALOGUING_DATE', 'DATE_END', 'DATE_NORMAL', 'DATE_START',
+             'EARLY_NORMAL_DATE', 'LATE_NORMAL_DATE', 'DATE_CATALOGING' ],
+    'number': ['BOX', 'CONTAINER'],
+    'text': ['BIBLIOGRAPHY', 'BARCODE', 'BIOGHIST', 'EXTENT','NOTES',
+             'NOTES_HIDDEN', 'RELATED_MATERIALS', 'COMBINED_CREATORS', 'FIRST_CREATOR_PERS', 'FIRST_CREATOR_CORP',
+             'UNITITLE', 'UNITITLE_ENG’', 'DIMENSIONS', 'ARRANGEMENT', 'EST_FILES_NUM', 'ORIDINAL_ID', 'ARCHIV_ID',
+             'Parent', 'PHYSLOC', 'PROJECT_ID', 'ROOTID', 'SCOPECONTENT', 'STAGE', '', 'UNITID', 'UNITITLE',
+             'TO_DELETE', 'DATE', 'APPRAISAL', 'ARCHIV_ID'],
+    'value_list': ['CATALOGUER', 'ADD_CREATORS', 'ADD_CREATORS_CORPS', 'ARCHIVAL_MATERIAL', 'COMBINED_CREATORS',
+                   'COMBINED_CREATORS_CORPS', 'COMBINED_CREATORS_PERS', 'CORPNAME', 'CREATOR_CORPS', 'CREATOR_PERS',
+                   'DIMENSIONS', 'GEOGNAME', 'PUBLICATION_COUNTRY', 'MEDIUM_FORMAT', 'PERSNAME', 'SCALE',
+                   'SUBJECT', 'WORKS', 'SIZE', 'TYPE_FIRST_CREATOR_PERS', 'TYPE_FIRST_CREATOR_CORP', 'COLLECTION_TYPE',
+                   'PUBLICATION_COUNTRY']}
+
 
 class FieldMapper:
 
     def __init__(self):
-        self.aleph_field_mapper = aleph_field_mapper
+        self.field_mapper = field_mapper
         self.field_mapper_back = field_mapper_back
         self.level_mapper = level_mapper
         self.collection_field_mapper = collection_field_mapper

@@ -25,8 +25,8 @@ VERSION
 
 import pandas as pd
 
-from .authorities import find_name, find_role
-from .columns import drop_col_if_exists
+from VC_collections.authorities import find_name, find_role
+from VC_collections.columns import drop_col_if_exists
 
 
 def splitDataFrameList(df, target_column, separator):

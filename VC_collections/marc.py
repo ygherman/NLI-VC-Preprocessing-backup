@@ -6,14 +6,13 @@ import alphabet_detector
 import dateutil
 from fuzzywuzzy import process
 
-from ..data.project import get_root_title
-from .AuthorityFiles import *
-from .authorities import is_corp, is_pers, find_name, find_role
-from .authorities import map_role_to_relator
-from .columns import drop_col_if_exists, column_exists, remove_duplicate_in_column
-
-from ..data.value import clean_text, find_nth
-from .explode import explode_col_to_new_df
+from VC_collections.AuthorityFiles import *
+from VC_collections.authorities import is_corp, is_pers, find_name, find_role
+from VC_collections.authorities import map_role_to_relator
+from VC_collections.columns import drop_col_if_exists, column_exists, remove_duplicate_in_column
+from VC_collections.explode import explode_col_to_new_df
+from VC_collections.project import get_root_title
+from VC_collections.value import clean_text, find_nth, replace_lst_dict
 
 # ROOTID finder
 ROOTID_finder = lambda x: x[:find_nth(x, '-', x.count('-'))] if '-' in x else ''
@@ -893,7 +892,7 @@ def create_MARC_996(df, df_aleph):
         996##l - NNL01
         996##m - name of current record, taken from 24510a ('כותרת')
         996##n - name of parent record taken from 24510a ('כותרת') of parrent record
-    :param df_alph:
+    :param df_aleph:
     :param df:
     :return
     """
@@ -949,7 +948,6 @@ def convert_MARC_996_to_773(df):
         996##l - NNL01
         996##m - name of current record, taken from 24510a ('כותרת')
         996##n - name of parent record taken from 24510a ('כותרת') of parrent record
-    :param df_alph:
     :param df:
     :return
     """
