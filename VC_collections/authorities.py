@@ -443,6 +443,8 @@ def clean_creators(collection: Collection) -> Collection:
     return collection
 
 
+
+
 def check_values_against_cvoc(collection: Collection, df: pd.DataFrame, col: str, mapping_dict: dict) -> list:
     """
 
@@ -471,4 +473,3 @@ def check_values_against_cvoc(collection: Collection, df: pd.DataFrame, col: str
             error_values.append(item)
     # if all('' == s or s.isspace() for s in test_655):
 
-    return error_values
