@@ -1,3 +1,4 @@
+import difflib
 import os
 import pprint
 from collections import defaultdict
@@ -354,12 +355,12 @@ def map_relators(collection, df, authority_role_list):
         else:
             role_not_found.append(role)
 
-    role_not_found = set(x for x in role_not_found if x != 'nan')
+    role_not_found = set(x for x in role_not_found if x != 'nan' or x != '')
 
     if len(indexes_roles_not_found) != 0:
         collection.logger.error(f"[CREATORS] Roles check - list of roles not found in roles authority list:"
                                 f" {'; '.join(role_not_found)}.")
-        print('\n', "indexes_roles_not_found", indexes_roles_not_found)
+        print('\n', "role_not_found:", role_not_found)
 
     return roles, role_not_found, temp_role_dict
 
@@ -443,9 +444,39 @@ def clean_creators(collection: Collection) -> Collection:
     return collection
 
 
+def replace_wrong_values(df, col, test_list, map_dict):
+    loop = len(test_list)
+    index = 0
 
 
-def check_values_against_cvoc(collection: Collection, df: pd.DataFrame, col: str, mapping_dict: dict) -> list:
+    while index < loop:
+        term = test_list[index]
+        choices = difflib.get_close_matches(term, list(map_dict.keys()), n=1, cutoff=0.6)
+        print(choices)
+        try:
+            assert (type(choices) == list)
+            assert (len(choices) >= 1)
+            assert (len(difflib.get_close_matches(term, list(map_dict.keys()), n=1, cutoff=0.6)) > 0)
+            new_term = difflib.get_close_matches(term, list(map_dict.keys()), n=1, cutoff=0.6)[0]
+            while True:
+                q = input("Replace the term [{}] with new term [{}]? type Y/n".format(term, new_term))
+                if q.lower() == 'y':
+                    df.replace(term, new_term, inplace=True)
+                    break
+                elif q.lower() == 'n':
+                    break
+
+                else:
+                    print('please type Y/N')
+        except:
+            print("[{}] did not find value {} in values dictionary".format(col, term))
+            pass
+
+        index += 1
+    return df
+
+
+def check_values_against_cvoc(collection: Collection, col: str, mapping_dict: dict) -> list:
     """
 
     :param collection:
@@ -455,12 +486,12 @@ def check_values_against_cvoc(collection: Collection, df: pd.DataFrame, col: str
     :return:
     """
     collection.logger.info(f"[{col.upper()}] Checking Value in {col} column against Controlled Vocabulary.")
+    df = collection.full_catalog
+    new_arch = list(filter(None, list(set(df[col].tolist()))))
 
-    arch_test = list(set(df[col].tolist()))
-    new_arch = ';'.join(arch_test)
-    # new_arch = list(set(new_arch.split(";")))
-    new_arch = list(filter(None, new_arch))  # fastest
-    # new_arch = list(set(new_arch))
+
+
+
 
     # declare empty list to save the values that don't exist in CVOC
     error_values = list()
@@ -472,4 +503,11 @@ def check_values_against_cvoc(collection: Collection, df: pd.DataFrame, col: str
         else:
             error_values.append(item)
     # if all('' == s or s.isspace() for s in test_655):
+    collection.logger.info("replace wrong values in Archival material")
+    df = replace_wrong_values(df, col, error_values, Authority_instance.arch_mat_mapping_dict)
+    collection.full_catalog = df
+
+    return collection
+
+
 

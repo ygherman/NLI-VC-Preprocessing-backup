@@ -14,8 +14,8 @@ from alphabet_detector import AlphabetDetector
 from oauth2client.service_account import ServiceAccountCredentials
 from pymarc import XMLWriter, Record, Field
 
-from VC_collections.fieldmapper import field_mapper
-from VC_collections.files import create_directory, write_excel
+from .fieldmapper import field_mapper
+from .files import create_directory, write_excel
 from .files import get_google_drive_api_path
 
 
@@ -26,8 +26,10 @@ def initialize_logging(reports_path, collection_id):
                         datefmt='%y-%m-%d %H:%M',
                         )
     fh = logging.FileHandler(filename=reports_path / (collection_id + '.log'))
+    st= logging.StreamHandler()
     logger = logging.getLogger(__name__)
     logger.addHandler(fh)
+    logger.addHandler(st)
 
     return logger
 
@@ -272,6 +274,7 @@ class Collection:
         self.logger = initialize_logging(self.data_path_reports, collection_id)
 
         client, file_id =  find_catalog_gspread(connect_to_google_drive(), self.collection_id)
+        self.logger.info("Creating ")
         dfs = create_xl_from_gspread(client, file_id)
         save_gspread_catalog(self.data_path_raw, dfs, self.collection_id)
 

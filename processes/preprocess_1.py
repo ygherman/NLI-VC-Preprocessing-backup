@@ -12,6 +12,7 @@ from VC_collections.files import get_branch_colletionID
 from VC_collections.value import *
 
 from VC_collections.authorities import *
+from VC_collections.Collection import Collection
 
 
 def temp_preprocess_file(collection):
@@ -172,7 +173,6 @@ def create_personalities_report(collection):
 
     df = df.reset_index()
     if "COMBINED_CREATORS_PERS" in df.columns.values:
-        print("COMBINED_CREATORS_PERS in df.columns.values")
         df_creator_pers = pd.DataFrame.from_dict(
             create_authority_file(
                 df[['UNITID', 'COMBINED_CREATORS_PERS']].dropna(how='any'), 'COMBINED_CREATORS_PERS'), orient='index')
@@ -279,6 +279,8 @@ def main():
     collection.full_catalog = split_creators_by_type(collection.full_catalog, 'COMBINED_CREATORS')
 
     collection = create_personalities_report(collection)
+
+    collection = check_values_against_cvoc(collection, 'ARCHIVAL_MATERIAL', Authority_instance.arch_mat_mapping_dict)
 
 
 
