@@ -11,6 +11,7 @@ from VC_collections.AuthorityFiles import *
 from VC_collections.columns import clean_text_cols, strip_whitespace_af_semicolon, remove_duplicate_in_column, \
     drop_col_if_exists, replace_NaN
 from VC_collections.files import write_excel
+from VC_collections.value import clean_name
 
 
 def split_creators_by_type(df, col_name):
@@ -47,10 +48,16 @@ def split_creators_by_type(df, col_name):
 
         df.loc[index, "COMBINED_CREATORS_PERS"] = ";".join(add_pers_creators)
         df.loc[index, "COMBINED_CREATORS_CORPS"] = ";".join(add_corps_creators)
+
     if 'COMBINED_CREATORS' in df.columns.values:
         df.COMBINED_CREATORS = df.COMBINED_CREATORS.str.strip()
+    else:
+        df.COMBINED_CREATORS = df['FIRST_CREATOR_PERS'].astype(str) + ';' + df['FIRST_CREATOR_CORP'] + ';' + \
+                               df["COMBINED_CREATORS_PERS"] + ';' + df["COMBINED_CREATORS_CORPS"]
+
     df.COMBINED_CREATORS_CORPS = df.COMBINED_CREATORS_CORPS.str.strip()
     df.COMBINED_CREATORS_PERS = df.COMBINED_CREATORS_PERS.str.strip()
+
     return df
 
 
@@ -116,7 +123,7 @@ def authority_Excelfile(df, column):
     :param column:
     :return: the authority dataframe
     """
-    df = df.reset_index()
+    df = df.reset_index(drop=True)
     df_auth = pd.DataFrame.from_dict(create_authority_file(df[['UNITID', column]].dropna(how='any'),
                                                            column),
                                      orient='index')
@@ -129,16 +136,15 @@ def authority_Excelfile(df, column):
     return df_auth
 
 
-def create_match_file(branch, collectionID, df_authority_file, df_auth, column):
+def create_match_file(collection, df_authority_file, df_auth, column):
     """
 
-    :param branch:
-    :param collectionID:
+    :param collection:
     :param df_authority_file:
     :param df_auth:
     :param column:
     """
-    file_name = collectionID + '_' + column + '.xlsx'
+    file_name = collection.collection_id + '_' + column + '.xlsx'
     choices = list()
     match_results = dict()
 
@@ -162,7 +168,7 @@ def create_match_file(branch, collectionID, df_authority_file, df_auth, column):
 
     new_match_results = dict()
     for key, value in match_results.items():
-        choich, score = value[0]
+        choice, score = value[0]
         if str(score) != '100':
             new_match_results[key] = value
 
@@ -182,11 +188,11 @@ def create_match_file(branch, collectionID, df_authority_file, df_auth, column):
 
     # create a list of sheet names
     sheets = list()
-    sheets.append(collectionID + '_' + column + '_c')
-    sheets.append(collectionID + '_' + column)
+    sheets.append(collection.collection_id + '_' + column + '_c')
+    sheets.append(collection.collection_id + '_' + column)
     sheets.append(column + '_match_results')
 
-    combined_results = pd.concat([df_match_results, df_auth], axis=1)
+    combined_results = pd.concat([df_match_results, df_auth], axis=1, sort=True)
 
     # create a list of dataframe that should
     dfs = list()
@@ -194,7 +200,7 @@ def create_match_file(branch, collectionID, df_authority_file, df_auth, column):
     dfs.append(df_auth)
     dfs.append(df_match_results)
 
-    write_excel(dfs, os.path.join(os.getcwd(), branch, collectionID, 'Authorities', file_name), sheets)
+    write_excel(dfs, collection.authorities_path / file_name, sheets)
 
 
 def is_corp(creator, df_corp_roles):
@@ -252,9 +258,9 @@ def find_name(name):
     """
     if "[" in name:
         start = name.find('[')
-        return name[:start].rstrip()
+        return clean_name(name[:start].rstrip())
     else:
-        return name.rstrip()
+        return clean_name(name.rstrip())
 
 
 def create_combined_creators(row):
@@ -262,10 +268,13 @@ def create_combined_creators(row):
         first_creator = str(row['FIRST_CREATOR_PERS']) + ' [' + str(row['TYPE_FIRST_CREATOR_PERS']) + ']'
     else:
         first_creator = str(row['FIRST_CREATOR_CORP']) + ' [' + str(row['TYPE_FIRST_CREATOR_CORP']) + ']'
-    add_creators = str(row['ADD_CREATOR_PERS']) + ';' + str(row['ADD_CREATOR_CORPS'])
+
+    if 'ADD_CREATORS' in list(row.index):
+        add_creators = row['ADD_CREATORS']
+    else:
+        add_creators = str(row['ADD_CREATOR_PERS']) + ';' + str(row['ADD_CREATOR_CORPS'])
 
     combined_creators = f'{first_creator};{add_creators}'
-    print(combined_creators)
 
     combined_creators.rstrip(';')
     combined_creators.lstrip(';')
@@ -303,6 +312,7 @@ def unique_creators(df):
     :param df:
     :return:
     """
+    characters_to_filter = [None, np.nan, ' ']
     for index, frame in df.iterrows():
         l1 = str(frame['COMBINED_CREATORS']).split(";")
         creator_names = set([find_name(x) for x in l1])
@@ -355,13 +365,11 @@ def map_relators(collection, df, authority_role_list):
         else:
             role_not_found.append(role)
 
-    role_not_found = set(x for x in role_not_found if x != 'nan' or x != '')
+    role_not_found = list(set(x for x in role_not_found if x != 'nan' or x != ''))
 
     if len(indexes_roles_not_found) != 0:
         collection.logger.error(f"[CREATORS] Roles check - list of roles not found in roles authority list:"
                                 f" {'; '.join(role_not_found)}.")
-        print('\n', "role_not_found:", role_not_found)
-
     return roles, role_not_found, temp_role_dict
 
 
@@ -444,22 +452,30 @@ def clean_creators(collection: Collection) -> Collection:
     return collection
 
 
-def replace_wrong_values(df, col, test_list, map_dict):
+def replace_wrong_values(collection, col, test_list, map_dict):
+    df = collection.full_catalog
+    test_list = list(set(test_list))
     loop = len(test_list)
     index = 0
+    print('test_list:', test_list)
+    values_not_found = list()
+
+    def check_term(old_term):
 
 
     while index < loop:
         term = test_list[index]
+        if term == '':
+            continue
+        print(f'test_list[{index}]:', term)
+        print(f'choices:', choices)
         choices = difflib.get_close_matches(term, list(map_dict.keys()), n=1, cutoff=0.6)
-        print(choices)
         try:
             assert (type(choices) == list)
-            assert (len(choices) >= 1)
             assert (len(difflib.get_close_matches(term, list(map_dict.keys()), n=1, cutoff=0.6)) > 0)
             new_term = difflib.get_close_matches(term, list(map_dict.keys()), n=1, cutoff=0.6)[0]
             while True:
-                q = input("Replace the term [{}] with new term [{}]? type Y/n".format(term, new_term))
+                q = input(f"Replace the term [{term}] with new term [{new_term}]? type Y/n")
                 if q.lower() == 'y':
                     df.replace(term, new_term, inplace=True)
                     break
@@ -469,7 +485,11 @@ def replace_wrong_values(df, col, test_list, map_dict):
                 else:
                     print('please type Y/N')
         except:
-            print("[{}] did not find value {} in values dictionary".format(col, term))
+            print(f"[{col}] did not find value {term} in values dictionary")
+            if col == 'MEDIA_FORMAT':
+                create_match_file(collection, Authority_instance.df_media_format_auth, authority_Excelfile(df, col), col)
+            elif col == 'ARCHIVAL_MATERIAL':
+                create_match_file(collection, Authority_instance.df_arch_mat_auth, authority_Excelfile(df, col), col)
             pass
 
         index += 1
@@ -486,27 +506,30 @@ def check_values_against_cvoc(collection: Collection, col: str, mapping_dict: di
     :return:
     """
     collection.logger.info(f"[{col.upper()}] Checking Value in {col} column against Controlled Vocabulary.")
+
     df = collection.full_catalog
-    new_arch = list(filter(None, list(set(df[col].tolist()))))
-
-
-
-
+    unique_values = ';'.join(list(df[col].unique()))
+    unique_values = unique_values.split(';')
+    unique_values = list(filter(None, unique_values))
 
     # declare empty list to save the values that don't exist in CVOC
     error_values = list()
 
-    for item in new_arch:
+    for item in unique_values:
         best, score = process.extractOne(item, list(mapping_dict.keys()))
         if best == item:
             continue
         else:
             error_values.append(item)
-    # if all('' == s or s.isspace() for s in test_655):
-    collection.logger.info("replace wrong values in Archival material")
-    df = replace_wrong_values(df, col, error_values, Authority_instance.arch_mat_mapping_dict)
-    collection.full_catalog = df
 
+    if error_values:
+        collection.logger.info(f"Replacing wrong values in {col}")
+        df = replace_wrong_values(collection, col, error_values, mapping_dict)
+        df.set_index('UNITID', inplace=True)
+        df.drop()
+        collection.full_catalog = df
+
+    collection.logger.info(f"All values in {col} are correct")
     return collection
 
 

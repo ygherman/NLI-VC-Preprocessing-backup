@@ -30,7 +30,7 @@ import numpy as np
 import pandas as pd
 from oauth2client.service_account import ServiceAccountCredentials
 
-from VC_collections.files import create_df_from_gs
+from .files import create_df_from_gs
 
 
 def create_df_from_gs(spreadsheet, worksheet):
@@ -99,16 +99,23 @@ def order_archival_material(df_arch_mat_auth):
         'סוג יוצר איש': 'creator_pers',
         'סוג יוצר תאגיד': 'creator_corp'
     }
-
+    print('before:', df_arch_mat_auth.columns)
     # rename columns names of Archival material table
     df_arch_mat_auth = df_arch_mat_auth.rename(columns=archiv_mat_cols)
+    print('after:', df_arch_mat_auth.columns)
+
     # create a dictionary for mapping
     df_arch_mat_mapping = df_arch_mat_auth.loc[
         df_arch_mat_auth.index, ['ARCHIVAL_MATERIAL', 'MARC21 655 7', 'rdacontent 336']]
     arch_mat_mapping_dict = pd.Series(df_arch_mat_mapping['MARC21 655 7'].values,
                                       index=df_arch_mat_mapping.ARCHIVAL_MATERIAL.values).to_dict()
 
-    return df_arch_mat_auth, arch_mat_mapping_dict
+    df_arch_mat_search = df_arch_mat_auth.loc[
+        df_arch_mat_auth.index, ['skosxl:prefLabel@lang=heb', 'ARCHIVAL_MATERIAL', 'MARC21 655 7', 'rdacontent 336']]
+    arch_mat_search_dict = pd.Series(df_arch_mat_search['ARCHIVAL_MATERIAL'].values,
+                                     index=df_arch_mat_search["skosxl:prefLabel@lang=heb"].values).to_dict()
+
+    return df_arch_mat_auth, arch_mat_mapping_dict, arch_mat_search_dict
 
 
 class Authority:
@@ -150,7 +157,8 @@ class Authority:
         df_level, level_cols = create_df_from_gs(spreadsheet, 'רמת תיאור')
 
         self.df_media_format_auth, self.media_format_mapping_dict = order_media_format(df_media_format_auth)
-        self.df_arch_mat_auth, self.arch_mat_mapping_dict = order_archival_material(df_arch_mat_auth)
+        self.df_arch_mat_auth, self.arch_mat_mapping_dict, self.arch_mat_search_dict = order_archival_material(
+            df_arch_mat_auth)
         self.df_arch_mat_mapping = df_arch_mat_mapping
         self.df_creator_corps_role = df_creator_corps_role
         self.df_creator_pers_role = df_creator_pers_role

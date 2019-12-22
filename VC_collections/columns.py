@@ -25,6 +25,8 @@ def remove_duplicate_in_column(df, col):
     :return: the duplicate free dataframe
     """
 
+    if col not in list(df.columns):
+        return df
     for index, frame in df[col].iteritems():
 
         # if there is a list of values delimited by ;

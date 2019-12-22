@@ -22,11 +22,21 @@ VERSION
     
     $
 """
+import re
 from datetime import datetime
 
 import dateutil
+import numpy as np
 from fuzzywuzzy import process
 
+
+def filter_characters(character):
+    characters_to_filter = [None, np.nan, ' ']
+
+    if character in characters_to_filter:
+        return True
+    else:
+        return False
 
 def isNaN(value):
     """
@@ -45,7 +55,7 @@ def find_nth(string, searchFor, n):
     :param string: the string to search
     :param searchFor: the substring to search for
     :param n: the position number
-    :return: The position of the nth occurence of the substring in the given string.
+    :return: The position of the nth occurrence of the substring in the given string.
     """
 
     start = string.find(searchFor)
@@ -74,11 +84,6 @@ def utf8len(s):
     return len(s.encode('utf-8'))
 
 
-# ##
-
-# In[1]:
-
-
 def create_list(x, delimiter):
     """
         create list from a string with specified delimiter
@@ -89,6 +94,7 @@ def create_list(x, delimiter):
     x_list = x.split(delimiter)
     x_list = [x.strip() for x in x_list]
     return x_list
+
 
 def unique_list(text):
     """
@@ -110,19 +116,20 @@ def date_validate(date_text):
     except ValueError:
         raise ValueError("Incorrect data format, should be YYYY-MM-DD")
 
-# strip trailing semicolon finction
+
+# strip trailing semicolon function
 semiColonStriper = lambda x: x.rstrip(';')
 
-
-# Cleaning Text from special Charecters
+# Cleaning Text from special Characters
 clean_text = lambda x: ''.join(e for e in str(x) if e.isalnum())
 
 # strip whitespaces function
 whiteSpaceStriper = lambda x: x.strip()
 
+clean_name = lambda x: re.sub(r'(?<=[.,])(?=[^\s])', r' ', x)
 
 def replace_lst_dict(lst, dictionary):
-    for k,v in enumerate(lst):
+    for k, v in enumerate(lst):
         if v in dictionary:
             lst[k] = dictionary[v]
     return lst

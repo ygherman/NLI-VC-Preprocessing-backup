@@ -50,9 +50,9 @@ def create_ROOT_id(collection):
     if len(df[df['LEVEL'] == 'Section Record']) == 1:
         df.loc[collection.collection_id, "ROOTID"] = ''
 
-    else:
+    elif len(df[df['LEVEL'] == 'Section Record']) > 1:
         collection.logger.error("[ROOTID] Error - There is more than one record with LEVEL='Section Record'")
-        print("There is more than one record with LEVEL='Section Record'")
+        print(df[df['LEVEL'] == 'Section Record'])
         sys.exit()
 
     collection.full_catalog = df
@@ -110,13 +110,10 @@ def check_mandatory_cols_v1(df):
 
     #     assert (mandatory_cols in list(df.columns)), "not all mandatory columns exist in table"
     for col in mandatory_cols_version1:
-        assert (col in list(df.columns)), "Mandatory element [{}] no in table".format(col)
+        assert (col in list(df.columns)), f"Mandatory element [{col}] no in table".format(col)
         mask = df[col] == ''
-        assert (len(df[mask]) == 0), "Mandatory element [{}] is empty in {} rows, {}".format(col,
-                                                                                             len(df[mask]),
-                                                                                             df.loc[
-                                                                                                 df[mask].index.values,
-                                                                                                 'UNITID'])
+        assert (len(df[mask]) == 0), f"Mandatory element [{col}] is empty in {len(df[mask])} rows, " \
+                                     f"{df.loc[df[mask].index.values, 'UNITID']}"
 
 
 def check_mandatory_cols_v2(df):
@@ -159,67 +156,95 @@ def clean_record_title(collection):
     return collection
 
 
-def create_personalities_report(collection):
-    collection.logger.info(f'[Personalities] Creating a dataframe for creators which are persons, at: {datetime.now()}')
-    df = collection.full_catalog
-    try:
-        'PERSNAME' in list(df.columns)
+def create_authorities_report(collection, authority_type):
 
-    except:
-        sys.stderr("There is no [PERSNAME] column in full catalog dataframe")
+    df = collection.full_catalog
+
+    if authority_type == "PERS":
+        col = 'PERSNAME'
+        combined_authority_col = "COMBINED_CREATORS_" + authority_type
+        authority_col = "CREATOR_" + authority_type
+    elif authority_type == "CORPS":
+        col = 'CORPNAME'
+        combined_authority_col = "COMBINED_CREATORS_" + authority_type
+        authority_col = "CREATOR_" + authority_type
+    elif authority_type == "GEO":
+        col = 'GEOGNAME'
+        combined_authority_col = "GEOGNAME"
+        authority_col = "GEOGNAME"
+
+    if col not in list(df.columns):
         return collection
 
-    df = remove_duplicate_in_column(df, "PERSNAME")
+    collection.logger.info(f'[{col}] Creating a dataframe for creators which are {authority_type}')
+
+    try:
+        col in list(df.columns)
+
+    except:
+        sys.stderr(f"There is no [{col}] column in full catalog dataframe")
+        return collection
+
+    df = remove_duplicate_in_column(df, col)
 
     df = df.reset_index()
-    if "COMBINED_CREATORS_PERS" in df.columns.values:
-        df_creator_pers = pd.DataFrame.from_dict(
+
+    if combined_authority_col in df.columns.values:
+        df_creator = pd.DataFrame.from_dict(
             create_authority_file(
-                df[['UNITID', 'COMBINED_CREATORS_PERS']].dropna(how='any'), 'COMBINED_CREATORS_PERS'), orient='index')
+                df[['UNITID', combined_authority_col]].dropna(how='any'), combined_authority_col), orient='index')
     else:
-        df_creator_pers = pd.DataFrame.from_dict(
+        df_creator = pd.DataFrame.from_dict(
             create_authority_file(
-                df[['UNITID', 'CREATOR_PERS']].dropna(how='any'), 'CREATOR_PERS'), orient='index')
+                df[['UNITID', authority_col]].dropna(how='any'), authority_col), orient='index')
 
     # create a dataframe for personalities in the access points (persname) which are persons
-    df_access_pers = pd.DataFrame.from_dict(
+    df_access = pd.DataFrame.from_dict(
         create_authority_file(
-            df[['UNITID', 'PERSNAME']].dropna(how='any'), 'PERSNAME'), orient='index')
+            df[['UNITID', col]].dropna(how='any'), col), orient='index')
 
-    df_creator_pers = df_creator_pers.reset_index()
-    df_access_pers = df_access_pers.reset_index()
+    df_creator = df_creator.reset_index()
+    df_access = df_access.reset_index()
 
-    df_creator_pers['Name'] = df_creator_pers['index'].apply(
+    df_creator['Name'] = df_creator['index'].apply(
         lambda x: find_name(x).strip() if isinstance(x, str) else x)
-    df_creator_pers['Role'] = df_creator_pers['index'].apply(
+    df_creator['Role'] = df_creator['index'].apply(
         lambda x: find_role(x).strip() if isinstance(x, str) else x)
-    df_creator_pers['Type'] = "CREATOR"
+    df_creator['Type'] = "CREATOR"
 
-    df_access_pers['Name'] = df_access_pers['index'].apply(lambda x: find_name(x).strip() if isinstance(x, str) else x)
-    df_access_pers['Role'] = df_access_pers['index'].apply(lambda x: find_role(x).strip() if isinstance(x, str) else x)
-    df_access_pers['Type'] = "PERSNAME"
+    df_access['Name'] = df_access['index'].apply(lambda x: find_name(x).strip() if isinstance(x, str) else x)
+    df_access['Role'] = df_access['index'].apply(lambda x: find_role(x).strip() if isinstance(x, str) else x)
+    df_access['Type'] = col
 
-    df_pers = pd.concat([df_creator_pers, df_access_pers])
-    df_pers['Count'] = df_pers.apply(lambda row: len(row["UNITID"]), axis=1)
+    df_authority = pd.concat([df_creator, df_access])
+    df_authority['Count'] = df_authority.apply(lambda row: len(row["UNITID"]), axis=1)
 
-    df_pers = pd.concat(
-        [df_pers['Name'], df_pers['Role'], df_pers['Type'], df_pers['Count'], df_pers['UNITID'].apply(pd.Series)],
+    df_authority = pd.concat(
+        [df_authority['Name'], df_authority['Role'], df_authority['Type'],
+         df_authority['Count'], df_authority['UNITID'].apply(pd.Series)],
         axis=1)
 
-    unique_pers_filename = collection.authorities_path / (collection.collection_id + '_pers_unique_' +
-                                                          collection.dt_now + '.xlsx')
-    pers_occurrences_filename = collection.authorities_path / (collection.collection_id + '_pers_report_' +
-                                                          collection.dt_now + '.xlsx')
-    df_pers = df_pers.reset_index()
-    collection.logger.info(f'[Personalities] creating report for unique personalities, file name: {unique_pers_filename}')
-    write_excel(pd.DataFrame(df_pers.Name.unique()), unique_pers_filename, 'unique_pers')
+    if authority_type=='GEO':
+        df_authority = df_authority[df_authority['Type'] != 'CREATOR']
+
+    unique_authority_filename = collection.authorities_path / (collection.collection_id + '_' +
+                                                               authority_type.lower() + '_unique_' +
+                                                               collection.dt_now + '.xlsx')
+    authority_occurrences_filename = collection.authorities_path / (collection.collection_id + '_' +
+                                                                    authority_type.lower() + '_report_' +
+                                                                    collection.dt_now + '.xlsx')
+    df_authority = df_authority.reset_index(drop=True)
+    collection.logger.info(
+        f'[Authorities - {authority_type}] creating report for unique {authority_col},'
+        f' file name: {unique_authority_filename}')
+    write_excel(pd.DataFrame(df_authority.Name.unique()), unique_authority_filename, 'unique_' + authority_type.lower())
 
     # sort by index (names of pers) and then by count (number of occurrences)
-    df_pers = df_pers.reset_index(drop=True)
-    df_pers = df_pers.set_index('Name')
-    df_pers = df_pers.sort_values(by=['Name', 'Count'], ascending=[True, False])
-    df_pers = drop_col_if_exists(df_pers, 'index')
-    write_excel(df_pers, pers_occurrences_filename, 'pers_report')
+    df_authority = df_authority.reset_index(drop=True)
+    df_authority = df_authority.set_index('Name')
+    df_authority = df_authority.sort_values(by=['Name', 'Count'], ascending=[True, False])
+    df_authority = drop_col_if_exists(df_authority, 'index')
+    write_excel(df_authority, authority_occurrences_filename, authority_type + '_report')
 
     collection.full_catalog = df
 
@@ -244,8 +269,10 @@ def main():
 
     if 'FIRST_CREATOR_PERS' in list(collection.full_catalog.columns):
         check_mandatory_cols_v2(collection.full_catalog.reset_index())
-    else:
+    elif 'COMBINED_CREATORS' in list(collection.full_catalog.columns):
         check_mandatory_cols_v1(collection.full_catalog.reset_index())
+    elif 'ADD_CREATORS' in list(collection.full_catalog.columns):
+        collection.full_catalog = split_creators_by_type(collection.full_catalog, 'ADD_CREATORS')
 
     collection.logger.info(
         f'[LEVEL] Mapping Level values of {collection_id} from hebrew to english, at: {datetime.now()}')
@@ -274,17 +301,16 @@ def main():
     collection = clean_creators(collection)
 
     collection.logger.info(
-        f'[COMBINED_CREATORS]Splitting COMBINED_CREATORS into COMBINED_CREATORS_PERS'
+        f'[COMBINED_CREATORS] Splitting COMBINED_CREATORS into COMBINED_CREATORS_PERS'
         f'and COMBINED_CREATORS_CORPS columns according to roles')
     collection.full_catalog = split_creators_by_type(collection.full_catalog, 'COMBINED_CREATORS')
 
-    collection = create_personalities_report(collection)
+    collection = create_authorities_report(collection, 'PERS')
+    collection = create_authorities_report(collection, 'CORPS')
+    collection = create_authorities_report(collection, 'GEO')
 
-    collection = check_values_against_cvoc(collection, 'ARCHIVAL_MATERIAL', Authority_instance.arch_mat_mapping_dict)
-
-
-
-
+    collection = check_values_against_cvoc(collection, 'ARCHIVAL_MATERIAL', Authority_instance.arch_mat_search_dict)
+    collection = check_values_against_cvoc(collection, 'MEDIUM_FORMAT', Authority_instance.media_format_mapping_dict)
 
     temp_preprocess_file(collection)
 

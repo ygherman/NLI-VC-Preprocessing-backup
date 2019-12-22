@@ -20,7 +20,7 @@ from .files import get_google_drive_api_path
 
 
 def initialize_logging(reports_path, collection_id):
-    logging.basicConfig(level=logging.INFO,
+    logging.basicConfig(level=logging.DEBUG,
                         filename=reports_path / (collection_id + '.log'),
                         format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
                         datefmt='%y-%m-%d %H:%M',
@@ -63,14 +63,24 @@ def find_catalog_gspread(client, collection_id):
 
     for index, file in enumerate(files):
         print(index, ':', file['name'])
-        file_index = input('which file of the following do you choose? type the index number ')
-        return client, files[int(file_index)]['id']
+    while True:
+        try:
+            file_index = int(input('which file of the following do you choose? type the index number '))
+            file_index >=0 and file_index < len(files)
+        except ValueError:
+            print("Please re-enter the index number of the file you want to parse: ")
+            continue
+        else:
+            break
+
+    return client, files[int(file_index)]['id']
 
 
 def create_xl_from_gspread(client, file_id):
     spreadsheet = client.open_by_key(file_id)
     all_sheets_as_dfs = {}
     worksheet_list = spreadsheet.worksheets()
+
     for sheet in worksheet_list:
         print(sheet)
         if sheet.row_values(2) is None:
@@ -115,10 +125,7 @@ class Collection:
         """
         print('self.data_path_raw:', self.data_path_raw)
         for file in os.listdir(self.data_path_raw):
-            print('here')
             filename = os.fsdecode(file)
-            print('filename:', filename)
-            ext = Path(file).suffix
 
             if 'PRE_FINAL' in filename:  # this tests for substrings
                 file_path = os.path.join(self.data_path_raw, filename)
