@@ -20,6 +20,10 @@ ROOTID_finder = lambda x: x[:find_nth(x, '-', x.count('-'))] if '-' in x else ''
 Authority_instance = Authority()
 
 
+def create_MARC_initial_008(df):
+    df['008'] = '######k########xx######################d'
+    return df
+
 def create_MARC_091(df):
     """
         converts the ['ברקןד'] field to MARC21 091 encoded field
@@ -40,20 +44,22 @@ def create_MARC_911(df):
     """
     df['911'] = df['סימול'].apply(lambda x: '$$a' + x)
     while True:
-        collection_name_heb = input("Please enter a Collection Name in Hebrew:")
+        collection_name_heb = input("Please enter a Collection Name in Hebrew: \n")
         if not collection_name_heb:
             print("Please enter a Collection Name.")
         else:
             break
 
     while True:
-        collection_name_eng = input("Please enter a Collection Name in English:")
+        collection_name_eng = input("Please enter a Collection Name in English: \n")
         if not collection_name_eng:
             print("Please enter a Collection Name.")
         else:
             break
     df['911_1'] = df['911'] + '$$c' + collection_name_heb
+    df['093_1'] = df['911_1']
     df['911_2'] = df['911'] + '$$c' + collection_name_eng
+    df['093_2'] = df['911_2']
 
     df = drop_col_if_exists(df, '911')
     df = drop_col_if_exists(df, 'שם האוסף')
@@ -118,9 +124,9 @@ def create_MARC_351_LDR(df):
     def define_LDR(hier):
 
         if hier == 'File Record' or hier == 'Item Record':
-            return '00000npd^a22^^^^^^a^4500'
+            return '00000npd#a22######a#4500'
         else:
-            return '00000npc^a22^^^^^^^^4500'
+            return '00000npc#a22########4500'
 
     if column_exists(df, 'רמת תיאור'):
         col = 'רמת תיאור'
@@ -462,9 +468,9 @@ def create_MARC_700_710(df):
     """
 
     # all the rest of creators (Personalities)
-    df['7001'] = df['יוצריםאישים'].apply(lambda x: all_rest_creators(x))
+    df['7001'] = df['יוצרים אישים'].apply(lambda x: all_rest_creators(x))
     # all the rest of creators (Corporate bodies)
-    df['7102'] = df['יוצריםמוסדות'].apply(lambda x: all_rest_creators(x))
+    df['7102'] = df['יוצרים מוסדות'].apply(lambda x: all_rest_creators(x))
 
     df = project_photographer(df)
 
@@ -547,6 +553,17 @@ def check_values_arch_mat(df, arch_mat_col, arch_mat_mapping_dict):
     return error_values
 
 
+def create_MARC_defualt_copyright(df):
+    df['5420'] = '$$lCopyright status not determined; ' + \
+                 'Contract$$nNo copyright analysis' + \
+                 f'$$oNoam Solan by Yael Gherman {datetime.datetime.now().strftime("%Y%m%d")}$$qללא ניתוח מצב זכויות'
+    df['5061'] = '$$aLibrary premises only;$$bPermissions officer;$$eIsrael Copyright Act$$0000000008'
+    df['540'] = '$$aאיסור העתקה' + \
+                '$$uhttp://web.nli.org.il/sites/NLI/Hebrew/library/items-terms-of-use/Pages/nli-copying-prohibited.aspx'
+
+    return df
+
+
 def create_marc_655(df):
     """
         [סוג חומר] column
@@ -569,6 +586,10 @@ def create_marc_655(df):
     if column_exists(df, 'סוגחומר'):
         col = 'סוגחומר'
     elif column_exists(df, 'סוגהחומר'):
+        col = 'סוגהחומר'
+    elif column_exists(df, 'סוג החומר'):
+        col = 'סוגהחומר'
+    elif column_exists(df, 'סוג חומר'):
         col = 'סוגהחומר'
     try:
         col
@@ -629,7 +650,7 @@ def project_photographer(df):
     return df
 
 
-def create_MARC_506(df, cols):
+def create_MARC_506_post_copyright(df, cols):
     """
     fuction's input is the entire table as a dataframe and constructs the 506 field according to the POST_COPYRIGHT
     file.
@@ -690,7 +711,7 @@ def create_MARC_041(df):
     return df
 
 
-def create_MARC_542(df, col):
+def create_MARC_542_post_copyright(df, col):
     """
     fuction's input is the entire table as a dataframe and constructs the 542 field according to the POST_COPYRIGHT
     file.
@@ -705,7 +726,7 @@ def create_MARC_542(df, col):
     return df
 
 
-def create_MARC_540(df, col):
+def create_MARC_540_post_copyright(df, col):
     """
     fuction's input is the entire table as a dataframe and constructs the 542 field according to the POST_COPYRIGHT
     file.
@@ -766,17 +787,19 @@ def create_MARC_260(df, col, date_cols):
     df[date_cols[1]] = df[date_cols[1]].apply(lambda x: x[:4])
 
     for index, row in df.iterrows():
-        countries = row[col[0]].split(';')
+        if row[col] == '' or row[col] is None:
+            continue
+        countries = row[col].split(';')
         countries = list(filter(None, countries))
         if len(countries) > 0:
             field_008_country = ['$$a' + countries_code_mapper[k] for k in countries if len(k) > 0]
             first_country = field_008_country[0][3:]
             if len(first_country) == 2:
-                first_country += '^'
+                first_country += '#'
 
             df.loc[index, '044'] = ''.join(field_008_country)
         else:
-            first_country = 'xx^'  # code xx# is xx# No place, unknown, or undetermined
+            first_country = 'xx#'  # code xx# is xx# No place, unknown, or undetermined
 
         countries = ['$$e[' + x + ']$$9heb' for x in countries]
 
@@ -820,7 +843,7 @@ def create_MARC_520(df):
         print("col variable not defined")
         pass
     else:
-        df['520'] = df[col].apply(lambda x: '$$a' + x.strip() if x != '' else '')
+        df['520'] = df[col].apply(lambda x: '$$a' + str(x).strip() if x != '' else '')
         df = drop_col_if_exists(df, col)
 
     return df

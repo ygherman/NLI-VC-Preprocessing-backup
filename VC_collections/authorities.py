@@ -1,6 +1,7 @@
 import difflib
 import os
 import pprint
+import re
 from collections import defaultdict
 
 import pandas as pd
@@ -452,49 +453,6 @@ def clean_creators(collection: Collection) -> Collection:
     return collection
 
 
-def replace_wrong_values(collection, col, test_list, map_dict):
-    df = collection.full_catalog
-    test_list = list(set(test_list))
-    loop = len(test_list)
-    index = 0
-    print('test_list:', test_list)
-    values_not_found = list()
-
-    def check_term(old_term):
-
-
-    while index < loop:
-        term = test_list[index]
-        if term == '':
-            continue
-        print(f'test_list[{index}]:', term)
-        print(f'choices:', choices)
-        choices = difflib.get_close_matches(term, list(map_dict.keys()), n=1, cutoff=0.6)
-        try:
-            assert (type(choices) == list)
-            assert (len(difflib.get_close_matches(term, list(map_dict.keys()), n=1, cutoff=0.6)) > 0)
-            new_term = difflib.get_close_matches(term, list(map_dict.keys()), n=1, cutoff=0.6)[0]
-            while True:
-                q = input(f"Replace the term [{term}] with new term [{new_term}]? type Y/n")
-                if q.lower() == 'y':
-                    df.replace(term, new_term, inplace=True)
-                    break
-                elif q.lower() == 'n':
-                    break
-
-                else:
-                    print('please type Y/N')
-        except:
-            print(f"[{col}] did not find value {term} in values dictionary")
-            if col == 'MEDIA_FORMAT':
-                create_match_file(collection, Authority_instance.df_media_format_auth, authority_Excelfile(df, col), col)
-            elif col == 'ARCHIVAL_MATERIAL':
-                create_match_file(collection, Authority_instance.df_arch_mat_auth, authority_Excelfile(df, col), col)
-            pass
-
-        index += 1
-    return df
-
 
 def check_values_against_cvoc(collection: Collection, col: str, mapping_dict: dict) -> list:
     """
@@ -505,32 +463,81 @@ def check_values_against_cvoc(collection: Collection, col: str, mapping_dict: di
     :param mapping_dict:
     :return:
     """
-    collection.logger.info(f"[{col.upper()}] Checking Value in {col} column against Controlled Vocabulary.")
+    pass
 
+
+def convert_dict(new_val2errs):
+    d = defaultdict(list)
+    for nv, errs in new_val2errs.items():
+        if type(errs) == str:
+            errs = errs.split(';')
+        for err in errs:
+            if err != '':
+                d[err].append(nv)
+    return d
+
+
+def find_new_value(err, error_words2possible_new_vals):
+    try:
+        close_match4err = difflib.get_close_matches(err, list(error_words2possible_new_vals.keys()), n=1, cutoff=0.6)[0]
+    except IndexError:
+        return None
+
+    possible_new_vals = error_words2possible_new_vals[close_match4err]
+    if len(possible_new_vals) == 1 or possible_new_vals[0] == possible_new_vals[1]:
+        return possible_new_vals[0]
+
+    print('\n'.join([f"{i} :{pnv}" for pnv, i in enumerate(possible_new_vals)]))
+    while True:
+        try:
+            new_val_i = int(input(f"insert the index of the matching new value for error word {err}.\n "
+                                  f"if no new val is right return -1\n"))
+            break
+        except ValueError:
+            print("You did not enter an index in the desired range, please try again.")
+
+    return None if new_val_i == -1 else possible_new_vals[new_val_i]
+
+
+def fix_values_in_column(col, err, new_val):
+    if new_val is not None:
+        if new_val != err:
+
+            col = col.apply(lambda x: x.split(';'))
+            try:
+
+                fixed_col = col.apply(lambda line: [re.sub(r'^' + err + r'$', new_val, val.strip()) for val in line])
+            except:
+                print(f"Bad error value: [{err}], please correct in original data, and run again.")
+
+            col = fixed_col.apply(lambda x: ';'.join(x))
+        return None, col
+    return err, col
+
+
+def fix_original(col, error_words, new_values):
+    error_words2possible_new_val = convert_dict(new_values)
+    missing_errs = []
+    for err in error_words:
+        if len(err) > 0:
+            ret, col = fix_values_in_column(col, err, find_new_value(err, error_words2possible_new_val))
+            if ret is not None:
+                missing_errs.append(ret)
+    return missing_errs, col
+
+
+def check_values_against_cvoc(collection, col_name, new_values):
+    collection.logger.info(f'[{col_name}] Starting to work on {col_name} column')
     df = collection.full_catalog
-    unique_values = ';'.join(list(df[col].unique()))
-    unique_values = unique_values.split(';')
-    unique_values = list(filter(None, unique_values))
+    test_list = [x.split(';') for x in df[col_name].tolist()]
+    vals_to_check = [item for sublist in test_list for item in sublist]
+    vals_to_check = list(set(vals_to_check))
 
-    # declare empty list to save the values that don't exist in CVOC
-    error_values = list()
+    values_not_found, df[col_name] = fix_original(df[col_name], vals_to_check, new_values)
+    if len(values_not_found) > 0:
+        print("These values were not found: ", values_not_found)
+    else:
+        collection.logger.info(f'[{col_name.upper()}] Values corrected in column {col_name}')
 
-    for item in unique_values:
-        best, score = process.extractOne(item, list(mapping_dict.keys()))
-        if best == item:
-            continue
-        else:
-            error_values.append(item)
-
-    if error_values:
-        collection.logger.info(f"Replacing wrong values in {col}")
-        df = replace_wrong_values(collection, col, error_values, mapping_dict)
-        df.set_index('UNITID', inplace=True)
-        df.drop()
-        collection.full_catalog = df
-
-    collection.logger.info(f"All values in {col} are correct")
+    collection.full_catalog = df
     return collection
-
-
-

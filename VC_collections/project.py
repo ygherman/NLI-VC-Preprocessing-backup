@@ -23,9 +23,11 @@ VERSION
     $
 """
 import os
+import sys
 
 import pandas as pd
 
+from VC_collections.columns import drop_col_if_exists
 from VC_collections.value import clean_text, find_nth
 
 # ROOTID finder
@@ -77,17 +79,32 @@ def get_alma_sid(custom04_path, collectionID, df):
 
     # parse sysno file
     xl2 = pd.ExcelFile(alma_sysno_file)
-    df_alma = xl2.parse('results')
+    df_alma = xl2.parse(0)
 
-    # rename columns
-    df_alma = df_alma.rename(columns={'Adlib reference (911a)': '911'})
-
-    df_alma = df_alma.set_index(list(df_alma)[1])
+    df_alma = df_alma.set_index(list(df_alma.columns)[1])
     df_alma.index.names = ['סימול']
     df_alma = df_alma.iloc[:, 0:1]
+
+    # rename columns
     df_alma.columns = ['MMS ID']
 
-    df = df.join(df_alma, how='left')
+    # convert MMS ID col to string
+
+    df = df.merge(df_alma, on='סימול', how='left')
+    print(df[df['MMS ID'].isna()])
+    df = drop_col_if_exists(df, '911_1')
+    try:
+        df['MMS ID'] = df['MMS ID'].astype(str)
+    except ValueError:
+        sys.stderr.write(f"There is a missing MMS ID at {df.loc[df['MMS ID'].isna()==True, 'סימול']}."
+                         f"\n Please update the Alma MMS ID for that call number and run again!")
+        sys.exit()
+
+    df = df.reset_index()
+    df = drop_col_if_exists(df, '911_1')
+    df = df.set_index('MMS ID')
+    df.index.name = '001'
+    df = drop_col_if_exists(df, '911_1')
 
     return df, df_alma
 

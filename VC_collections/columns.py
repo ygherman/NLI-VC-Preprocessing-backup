@@ -191,6 +191,7 @@ def clean_tables(collection):
                            f'applying {remove_line_breaks.__name__} function.')
     collection.df_collection = remove_line_breaks(collection.df_collection)
 
+
     # clean text columns
 
     for field in field_types_dict['text']:
@@ -215,10 +216,6 @@ def clean_tables(collection):
             collection.df_collection = strip_whitespace_af_semicolon(collection.df_collection, field)
         if column_exists(collection.df_catalog, field) and not is_column_empty(collection.df_catalog, field):
             collection.df_catalog = strip_whitespace_af_semicolon(collection.df_catalog, field)
-
-
-
-
 
 
     return collection

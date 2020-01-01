@@ -2,24 +2,16 @@ import sys
 import timeit
 
 from alphabet_detector import AlphabetDetector
-
-from VC_collections.columns import *
+from df2gspread import df2gspread as d2g
 
 sys.path.insert(1, 'C:/Users/Yaelg/Google Drive/National_Library/Python/VC_Preprocessing')
 from VC_collections.project import ROOTID_finder
-
+from VC_collections.columns import *
 from VC_collections.files import get_branch_colletionID
 from VC_collections.value import *
 
 from VC_collections.authorities import *
-from VC_collections.Collection import Collection
-
-
-def temp_preprocess_file(collection):
-    dt_now_temp = datetime.now().strftime('%Y%m%d')
-    preprocess_filename = collection.data_path_raw / (collection.collection_id + "_" + dt_now_temp +
-                                                      '_preprocessing_test.xlsx')
-    write_excel(collection.full_catalog, preprocess_filename, 'Catalog')
+from VC_collections.Collection import Collection, get_google_drive_credentials, export_entire_catalog, clean_catalog
 
 
 def check_missing_rootids(collection):
@@ -39,12 +31,12 @@ def check_missing_rootids(collection):
 
 def create_ROOT_id(collection):
     df = collection.full_catalog
-    collection.logger.info(f'Collection is of type {type(collection)}')
+    # collection.logger.info(f'Collection is of type {type(collection)}')
     collection.logger.info("Creating ROOTIDs column")
     df['ROOTID'] = df.index
     df.loc[df.index[1:], 'ROOTID'] = df.loc[df.index[1:], 'ROOTID'].apply(ROOTID_finder)
 
-    collection.logger.info(f'Collection is of type {type(collection)}')
+    # collection.logger.info(f'Collection is of type {type(collection)}')
 
     # reset ROOTID of section record to null
     if len(df[df['LEVEL'] == 'Section Record']) == 1:
@@ -110,7 +102,7 @@ def check_mandatory_cols_v1(df):
 
     #     assert (mandatory_cols in list(df.columns)), "not all mandatory columns exist in table"
     for col in mandatory_cols_version1:
-        assert (col in list(df.columns)), f"Mandatory element [{col}] no in table".format(col)
+        assert (col in list(df.columns)), f"Mandatory element [{col}] no in table"
         mask = df[col] == ''
         assert (len(df[mask]) == 0), f"Mandatory element [{col}] is empty in {len(df[mask])} rows, " \
                                      f"{df.loc[df[mask].index.values, 'UNITID']}"
@@ -157,7 +149,6 @@ def clean_record_title(collection):
 
 
 def create_authorities_report(collection, authority_type):
-
     df = collection.full_catalog
 
     if authority_type == "PERS":
@@ -172,6 +163,10 @@ def create_authorities_report(collection, authority_type):
         col = 'GEOGNAME'
         combined_authority_col = "GEOGNAME"
         authority_col = "GEOGNAME"
+    elif authority_type == "WORKS":
+        col = 'WORKS'
+        combined_authority_col = "WORKS"
+        authority_col = "WORKS"
 
     if col not in list(df.columns):
         return collection
@@ -210,13 +205,14 @@ def create_authorities_report(collection, authority_type):
         lambda x: find_name(x).strip() if isinstance(x, str) else x)
     df_creator['Role'] = df_creator['index'].apply(
         lambda x: find_role(x).strip() if isinstance(x, str) else x)
-    df_creator['Type'] = "CREATOR"
+    if authority_type == 'PERS' or authority_type == 'CORPS':
+        df_creator['Type'] = "CREATOR"
 
     df_access['Name'] = df_access['index'].apply(lambda x: find_name(x).strip() if isinstance(x, str) else x)
     df_access['Role'] = df_access['index'].apply(lambda x: find_role(x).strip() if isinstance(x, str) else x)
     df_access['Type'] = col
 
-    df_authority = pd.concat([df_creator, df_access])
+    df_authority = pd.concat([df_creator, df_access], sort=True)
     df_authority['Count'] = df_authority.apply(lambda row: len(row["UNITID"]), axis=1)
 
     df_authority = pd.concat(
@@ -224,7 +220,7 @@ def create_authorities_report(collection, authority_type):
          df_authority['Count'], df_authority['UNITID'].apply(pd.Series)],
         axis=1)
 
-    if authority_type=='GEO':
+    if authority_type == 'GEO':
         df_authority = df_authority[df_authority['Type'] != 'CREATOR']
 
     unique_authority_filename = collection.authorities_path / (collection.collection_id + '_' +
@@ -246,7 +242,53 @@ def create_authorities_report(collection, authority_type):
     df_authority = drop_col_if_exists(df_authority, 'index')
     write_excel(df_authority, authority_occurrences_filename, authority_type + '_report')
 
+    df = df.set_index('UNITID')
     collection.full_catalog = df
+
+    return collection
+
+
+def rename_header_back(df):
+    df_final = df.rename(columns=final_fields_back_mapper)
+    return df_final
+
+
+def order_columns(full_catalog):
+    full_catalog = full_catalog[final_column_order]
+    return full_catalog
+
+
+def unify_columns_with_master_template(full_catalog):
+    for field in final_column_order:
+        if field not in list(full_catalog.columns):
+            full_catalog[field] = ''
+    return full_catalog
+
+
+def create_final_file(collection):
+    collection.full_catalog = rename_header_back(collection.full_catalog)
+    collection.full_catalog.index.name = 'סימול'
+    collection.logger.info("Final file: creating final file")
+    collection.full_catalog = unify_columns_with_master_template(collection.full_catalog)
+    collection.full_catalog = order_columns(collection.full_catalog)
+    return collection
+
+
+def update_df_in_gdrive(collection):
+    credentials = get_google_drive_credentials()
+    worksheet_name = 'קטלוג סופי'
+    d2g.upload(collection.full_catalog.applymap(str), collection.google_sheet_file_id,
+               worksheet_name, credentials=credentials, row_names=True)
+
+
+# TODO
+def add_MMSIDs_to_full_catalog(collection):
+    file_path = collection.aleph_custom04_path / (collection.collection_id + "_alma_sysno.xlsx")
+    try:
+        df_mmsid = pd.DataFrame(pd.ExcelFile(file_path).parse('Sheet1'))
+    except:
+        print(f'There is no file in path: {file_path}')
+
 
     return collection
 
@@ -266,6 +308,8 @@ def main():
     collection.full_catalog = drop_cols_not_in_mapping(collection.full_catalog)
 
     collection = clean_tables(collection)
+    if hasattr(collection, 'full_catalog'):
+        collection.full_catalog = clean_catalog(collection.full_catalog)
 
     if 'FIRST_CREATOR_PERS' in list(collection.full_catalog.columns):
         check_mandatory_cols_v2(collection.full_catalog.reset_index())
@@ -285,13 +329,10 @@ def main():
 
     collection = create_ROOT_id(collection)
 
-    elapsed = timeit.default_timer() - start_time
-    collection.logger.info(f'Execution Time: {elapsed}')
-
     if 'TO_DELETE' in list(collection.full_catalog.columns):
         collection.logger.info(
             "[TO_DELETE] Changing the ROOTID to collectionID for records which are about to be deleted")
-        collection.full_catalog.columns.loc[collection.full_catalog.columns['TO_DELETE'] == 'כן',
+        collection.full_catalog.loc[collection.full_catalog['TO_DELETE'] == 'כן',
                                             'ROOTID'] = collection.collection_id
 
     collection = clean_record_title(collection)
@@ -308,16 +349,25 @@ def main():
     collection = create_authorities_report(collection, 'PERS')
     collection = create_authorities_report(collection, 'CORPS')
     collection = create_authorities_report(collection, 'GEO')
+    collection = create_authorities_report(collection, 'WORKS')
 
     collection = check_values_against_cvoc(collection, 'ARCHIVAL_MATERIAL', Authority_instance.arch_mat_search_dict)
+
     collection = check_values_against_cvoc(collection, 'MEDIUM_FORMAT', Authority_instance.media_format_mapping_dict)
 
-    temp_preprocess_file(collection)
+    collection = create_final_file(collection)
 
+    update_df_in_gdrive(collection)
 
+    collection.temp_preprocess_file()
 
+    export_entire_catalog(collection, stage='FINAL')
 
+    elapsed = timeit.default_timer() - start_time
+    collection.logger.info(f'Execution Time: {elapsed}')
 
+    collection = add_MMSIDs_to_full_catalog(collection)
+    collection.temp_preprocess_file(stage="PRE")
 
 
 if __name__ == '__main__':

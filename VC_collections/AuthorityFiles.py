@@ -85,6 +85,9 @@ def order_media_format(df_media_format_auth):
     media_format_mapping_dict = pd.Series(media_format_auth_mapping['MARC21 534'].values,
                                           index=media_format_auth['MEDIA_FORMAT'].values).to_dict()
 
+    for key, value in media_format_mapping_dict.items():
+        media_format_mapping_dict[key] = [value]
+
     return media_format_auth, media_format_mapping_dict
 
 
@@ -99,10 +102,8 @@ def order_archival_material(df_arch_mat_auth):
         'סוג יוצר איש': 'creator_pers',
         'סוג יוצר תאגיד': 'creator_corp'
     }
-    print('before:', df_arch_mat_auth.columns)
     # rename columns names of Archival material table
     df_arch_mat_auth = df_arch_mat_auth.rename(columns=archiv_mat_cols)
-    print('after:', df_arch_mat_auth.columns)
 
     # create a dictionary for mapping
     df_arch_mat_mapping = df_arch_mat_auth.loc[
@@ -111,11 +112,21 @@ def order_archival_material(df_arch_mat_auth):
                                       index=df_arch_mat_mapping.ARCHIVAL_MATERIAL.values).to_dict()
 
     df_arch_mat_search = df_arch_mat_auth.loc[
-        df_arch_mat_auth.index, ['skosxl:prefLabel@lang=heb', 'ARCHIVAL_MATERIAL', 'MARC21 655 7', 'rdacontent 336']]
-    arch_mat_search_dict = pd.Series(df_arch_mat_search['ARCHIVAL_MATERIAL'].values,
-                                     index=df_arch_mat_search["skosxl:prefLabel@lang=heb"].values).to_dict()
+        df_arch_mat_auth.index, ['skosxl:broader@prefLabel', 'skosxl:prefLabel@lang=heb', 'ARCHIVAL_MATERIAL',
+                                 'ARCHIVAL_MATERIAL_ALT_HEB', 'MARC21 655 7', 'rdacontent 336']]
+    df_arch_mat_search['clean_value'] = df_arch_mat_search.apply(
+        lambda row: row['skosxl:broader@prefLabel'] if row['skosxl:prefLabel@lang=heb'] == '' else row[
+            'skosxl:prefLabel@lang=heb'],
+        axis=1)
 
-    return df_arch_mat_auth, arch_mat_mapping_dict, arch_mat_search_dict
+    df_arch_mat_search['all_terms'] = df_arch_mat_search['clean_value'].map(str) + ';' + \
+                                      df_arch_mat_search['ARCHIVAL_MATERIAL'] + ';' + \
+                                      df_arch_mat_search['ARCHIVAL_MATERIAL_ALT_HEB']
+
+    arch_mat_search_dict = pd.Series(df_arch_mat_search['all_terms'].values,
+                                     index=df_arch_mat_search["ARCHIVAL_MATERIAL"].values).to_dict()
+
+    return df_arch_mat_auth, df_arch_mat_search, arch_mat_mapping_dict, arch_mat_search_dict
 
 
 class Authority:
@@ -157,8 +168,8 @@ class Authority:
         df_level, level_cols = create_df_from_gs(spreadsheet, 'רמת תיאור')
 
         self.df_media_format_auth, self.media_format_mapping_dict = order_media_format(df_media_format_auth)
-        self.df_arch_mat_auth, self.arch_mat_mapping_dict, self.arch_mat_search_dict = order_archival_material(
-            df_arch_mat_auth)
+        self.df_arch_mat_auth, self.df_arch_mat_search, self.arch_mat_mapping_dict, self.arch_mat_search_dict =\
+            order_archival_material(df_arch_mat_auth)
         self.df_arch_mat_mapping = df_arch_mat_mapping
         self.df_creator_corps_role = df_creator_corps_role
         self.df_creator_pers_role = df_creator_pers_role
