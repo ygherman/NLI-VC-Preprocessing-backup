@@ -83,8 +83,16 @@ def find_catalog_gspread(client, collection_id):
     return client, files[int(file_index)]['id'], files[int(file_index)]['name']
 
 
+def create_xl_from_gspread(client: gspread.client.Client, file_id: str) -> dict:
+    """
+    the function opens the Google Sheet spreadsheet and  iterates over all the sheets within the file, creates a
+    dataframe from each sheets and adds it to a dictionary of dataframes.
 
-def create_xl_from_gspread(client, file_id):
+    :param client: the google drive/sheets client api created by the creadentials in the
+        'google_drive_api/client_secret.json' file.
+    :param file_id: the file id of the google spreadsheet to parse
+    :return: a dictionary dataframes - each dataframe represents a sheet within the google spreadsheet.
+    """
     spreadsheet = client.open_by_key(file_id)
     all_sheets_as_dfs = {}
     worksheet_list = spreadsheet.worksheets()
@@ -100,7 +108,7 @@ def create_xl_from_gspread(client, file_id):
     return all_sheets_as_dfs
 
 
-def export_entire_catalog(collection, stage):
+def export_entire_catalog(collection, df_sheets_dict, stage):
     if stage == 'PRE_FINAL':
         file_path = collection.data_path_raw / (collection.collection_id +
                                                 "_PRE_FINAL.xlsx")
@@ -112,9 +120,14 @@ def export_entire_catalog(collection, stage):
                                                   "_PRE1_FINAL.xlsx")
 
 
-    # collection.logger.info(f'Creating Excel: Saving [{stage}] file at {file_path}. ')
+    collection.logger.info(f'Creating Excel: Saving [{stage}] file at {file_path}. ')
+    if type(df_sheets_dict) == list:
+        write_excel(list(df_sheets_dict.values()), file_path, list(df_sheets_dict.keys()))
 
-    # write_excel(list(collection.catalog_dfs.values()), file_path, list(collection.catalog_dfs.keys()))
+    # TODO check if collectin.full_catalog is of type df or of type dict of dfs?
+    else:
+        pass
+        # write_excel(df_sheets_dict, file_path, "Sheet1")
 
 
 def remove_unnamed_cols(df):
@@ -136,6 +149,28 @@ def remove_trailing_zero(df):
 
 
     return df
+
+
+def remove_empty_rows(df):
+    df = df.replace('', np.nan)
+    df = df.dropna(how='all')
+    if 'סימול פרויקט' in list(df.columns):
+        df = df.dropna(subset=['סימול פרויקט'])
+
+    if df.index.name is not None:
+        print(df.index.name)
+        index = df.index.name
+        df_a = df.reset_index(drop=True)
+        df = df_a.reset_index(drop=True).dropna().set_index(index)
+    return df
+
+
+def remove_instructions_row(df):
+    if df.iloc[0].str.contains('שדה חובה!!').any() or df.iloc[0].str.contains('שדה חובה').any():
+        # remove instruction line
+        return df.loc[1:, ]
+    else:
+        return df
 
 
 def fill_missing_date(df):
@@ -200,8 +235,8 @@ class Collection:
 
     def make_catalog_copy(self):
         """
-
-        :return:
+            creates a safe copy of the original xlsx file ("PRE_FINAL.xlsx"), and adds 'safe_copy' suffix to the file.
+        :return:  path to new file, or none if it already exists.
         """
         print('self.data_path_raw:', self.data_path_raw)
         for file in os.listdir(self.data_path_raw):
@@ -216,9 +251,17 @@ class Collection:
                 except shutil.SameFileError:
                     pass
                 return new_file
+            else:
+                return None
 
     @staticmethod
     def replace_table_column_names(df):
+        """
+            The function replaces the column header names according to the field mapper dictionary.
+            This is in order to create a unified table with the same structure and column names.
+        :param df: original dataframe
+        :return: the modified dataframe with the new column headers
+        """
         new_columns = []
 
         # strip column names from special characters and whitespaces.
@@ -239,7 +282,11 @@ class Collection:
 
     @staticmethod
     def make_one_table(self):
-
+        """
+            creates one table by merging the catalog and the collection tables.
+        :param self: the entire collection object
+        :return: the collection object with the new attri
+        """
         # turn index to string
         self.df_collection.index = self.df_collection.index.map(str)
         df_catalog = self.replace_table_column_names(remove_unnamed_cols(self.df_catalog))
@@ -260,9 +307,18 @@ class Collection:
 
     @classmethod
     def catalog_sheets(cls):
+        """
+
+        :return:
+        """
         return cls._catalog_sheets
 
     def create_catalog_metadata_file(self):
+        """
+            creates a conf file in json format, with the metadata about the data used in the process:
+            cms, branch, collection_id, BASE_PATH of the directory, google sheet file name of the used collection sheet,
+            and the google sheet file id of the used collection google spreadsheet.
+        """
         catalog_metadata_fields = ['cms', 'branch', 'collection_id', 'BASE_PATH',
                                    'google_sheet_file_name', 'google_sheet_file_id']
 
@@ -281,6 +337,11 @@ class Collection:
         catalog_dfs = {}
 
         def remove_empty_rows(df):
+            """
+
+            :param df:
+            :return:
+            """
             df = df.replace('', np.nan)
             df = df.dropna(how='all')
             if 'סימול פרויקט' in list(df.columns):
@@ -294,6 +355,11 @@ class Collection:
             return df
 
         def remove_instructions_row(df):
+            """
+
+            :param df:
+            :return:
+            """
             if df.iloc[0].str.contains('שדה חובה!!').any() or df.iloc[0].str.contains('שדה חובה').any():
                 # remove instruction line
                 return df.loc[1:, ]
@@ -324,21 +390,24 @@ class Collection:
                 return ''
 
         copy = self.make_catalog_copy()
-        print(copy)
-        try:
-            xl = pd.ExcelFile(copy)
-        except ValueError:
-            sys.stderr.write("Invalid file path! check if collection exists.")
-            exit()
-
-        for table, sheet in Collection.catalog_sheets().items():
-            original_sheet = self.get_sheet(xl, sheet)
-            catalog_dfs[sheet] = remove_empty_rows(remove_instructions_row(original_sheet))
-        # add WORKS sheet to dfs if there is one
-        try:
-            catalog_dfs['יצירות'] = remove_empty_rows(xl.parse(get_works_sheet(xl, self.branch)))
-        except:
+        if copy is None:
             pass
+        else:
+
+            print(copy)
+            try:
+                xl = pd.ExcelFile(copy)
+            except ValueError:
+                sys.stderr.write("Invalid file path! check if collection exists.")
+
+            for table, sheet in Collection.catalog_sheets().items():
+                original_sheet = self.get_sheet(xl, sheet)
+                catalog_dfs[sheet] = remove_empty_rows(remove_instructions_row(original_sheet))
+            # add WORKS sheet to dfs if there is one
+            try:
+                catalog_dfs['יצירות'] = remove_empty_rows(xl.parse(get_works_sheet(xl, self.branch)))
+            except:
+                pass
         try:
             catalog_dfs['קטלוג סופי'] = remove_empty_rows(xl.parse('קטלוג סופי'))
 
@@ -348,6 +417,10 @@ class Collection:
         return catalog_dfs
 
     def temp_preprocess_file(self, stage="PRE"):
+        """
+            exports the entire catalog sheets to a xlsx file, with the suffix '_preprocessing_test.xlsx'
+        :param stage: in which stage of the process the data is exported: PRE, POST (default = "PRE").
+        """
         if stage == "PRE":
             dataframe2export = self.full_catalog
         elif stage == "POST":
@@ -391,27 +464,33 @@ class Collection:
         client, self.google_sheet_file_id, self.google_sheet_file_name = find_catalog_gspread(connect_to_google_drive(), self.collection_id)
         self.logger.info("Creating ")
         self.dfs = create_xl_from_gspread(client, self.google_sheet_file_id)
-        # export_entire_catalog(self, stage='PRE_FINAL')
 
-        catalog_dfs = self.fetch_data()
+        self.catalog_dfs = self.fetch_data()
+        if len(self.catalog_dfs) == 0:
+            pass
+        else:
+            export_entire_catalog(self, self.catalog_dfs, stage='PRE_FINAL')
 
-        self.df_catalog = catalog_dfs['קטלוג']
-        self.df_collection = catalog_dfs['אוסף']
-        self.df_personalities = catalog_dfs['אישים']
-        self.df_corporation = catalog_dfs['מוסדות']
+        self.df_catalog = remove_instructions_row(remove_empty_rows(self.dfs['קטלוג']))
+        self.df_collection = remove_instructions_row(remove_empty_rows(self.dfs['אוסף']))
+        self.df_personalities = remove_instructions_row(remove_empty_rows(self.dfs['אישים']))
+        self.df_corporation = remove_instructions_row(remove_empty_rows(self.dfs['מוסדות']))
 
-        self.df_works = catalog_dfs['יצירות']
+        work_col = [x for x in self.dfs.keys() if 'יצירות' in x][0]
+        self.df_works = self.dfs[work_col]
 
         self.full_catalog = self.make_one_table(self)
 
         self.all_tables = [type(getattr(self, name)).__name__ for name in dir(self) if name[:2] != '__' and name[-2:] != '__']
 
-        if 'קטלוג סופי' in catalog_dfs.keys():
-            self.df_final_data = remove_unnamed_cols(catalog_dfs['קטלוג סופי'].rename(columns=
-                                                                        {'Unnamed: 1': 'סימול'}))
+        if 'קטלוג סופי' in self.dfs.keys():
+            self.df_final_data = remove_unnamed_cols(self.dfs['קטלוג סופי'].rename(columns=
+                                                                        {'Unnamed: 1': 'סימול', '': 'סימול'}))
+            print('\n'.join([f"{i} :{col}" for col, i in enumerate(self.dfs['קטלוג סופי'].columns)]))
+            # print(f'column of קטלוג סופי are: {[index, col for (index, col) in enumrate(self.dfs.columns)]}'
 
         # turn headers to English
-        export_entire_catalog(self, stage='PRE1_FINAL')
+        export_entire_catalog(self, self.dfs, stage='PRE1_FINAL')
         self.create_catalog_metadata_file()
 
     def create_MARC_XML(self):
@@ -419,7 +498,7 @@ class Collection:
         Creates a MARC XML format file from the given dataframe
         :return:
         """
-        df = self.full_catalog
+        df = self.df_final_data
         output_file = self.data_path_processed / (self.collection_id + '_final_' + self.dt_now + ".xml")
         writer = XMLWriter(open(output_file, 'wb'))
         start_time = time.time()
@@ -489,12 +568,12 @@ class Collection:
                     subfields_data.append(subfield[0])
                     subfields_data.append(subfield[1:])
 
-                print('field:', field)
-                if not ind:
-                    print('no indicators')
-                else:
-                    print('indicators:', ind)
-                print('subfields:', subfields_data)
+                # print('field:', field)
+                # if not ind:
+                #     print('no indicators')
+                # else:
+                #     print('indicators:', ind)
+                # # print('subfields:', subfields_data)
 
                 record.add_field(
                     Field(

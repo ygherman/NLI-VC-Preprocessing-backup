@@ -195,8 +195,11 @@ level_mapper = {
     'אוסף': 'Section Record',
     'חטיבה': 'Fonds Record',
     'תתחטיבה': 'Sub-Fonds Record',
+    'תת-חטיבה': 'Sub-Fonds Record',
+    'תת חטיבה': 'Sub-Fonds Record',
     'סדרה': 'Series Record',
     'תתסדרה': 'Sub-Series Record',
+    'תת-סדרה': 'Sub-Series Record',
     'תת סדרה': 'Sub-Series Record',
     'תיק': 'File Record',
     'פריט': 'Item Record',
@@ -213,7 +216,7 @@ collection_field_mapper = {
     'יוצרי האוסף': 'ADD_CREATOR_PERS',
     'תאריכים': 'DATE',
     'מילות מפתח_אישי ליבה': 'PERSNAME',
-    'מילות מפתח_מוסדות ליבה': 'CORPSNAME',
+    'מילות מפתח_מוסדות ליבה': 'CORPNAME',
     'מילות מפתח_יצירות ליבה': 'WORKS',
     'מילות מפתח_נושאי ליבה': 'SUBJECT',
     'סוג חומר': 'ARCHIVAL_MATERIAL',
@@ -222,6 +225,7 @@ collection_field_mapper = {
     'תיאורהאוסףבפרויקטתרבותחזותיתואמנויותהבמה': 'APPRAISAL',
     'סוג אוסף': 'COLLECTION_TYPE',
     'היקף': 'EXTENT',
+    'היקף החומר הפיזי טרום מיון': 'EXTENT',
     'אוסף פתוח': 'ACCURALS',
     'ביבליוגרפיה ומקורות מידע': 'BIBLIOGRAPHY',
     'מיקום פיזי': 'PHYSLOC',
@@ -252,7 +256,6 @@ final_fields_back_mapper = {
     'COMBINED_CREATORS_CORPS': 'יוצרים מוסדות',
     'CONTAINER': 'מספר מיכל',
     'CORPNAME': 'מילות מפתח - מוסדות',
-    'CORPSNAME': 'מילות מפתח_מוסדות ליבה',
     'DATE': 'תאריך חופשי',
     'DATE_CATALOGING': 'תאריך הרישום',
     'DATE_END': 'תאריך מנורמל מאוחר',
@@ -260,7 +263,7 @@ final_fields_back_mapper = {
     'DIGITIZATION': 'מסלול דיגיטציה',
     'EST_FILES_NUM': 'מספר קבצים מוערך',
     'EXTENT': 'היקף החומר',
-    'GEOGNAME': 'מדינת הפרסום/הצילום',
+    'GEOGNAME': 'מילות מפתח_מקומות',
     'FIRST_CREATOR_CORP': 'יוצר ראשי - מוסד',
     'FIRST_CREATOR_PERS': 'יוצר ראשי - איש',
     'LANGUAGE': 'שפה',
@@ -349,8 +352,7 @@ field_types_dict = {
     'value_list': ['CATALOGUER', 'ADD_CREATORS', 'ADD_CREATORS_CORPS', 'ARCHIVAL_MATERIAL', 'COMBINED_CREATORS',
                    'COMBINED_CREATORS_CORPS', 'COMBINED_CREATORS_PERS', 'CORPNAME', 'CREATOR_CORPS', 'CREATOR_PERS',
                    'DIMENSIONS', 'GEOGNAME', 'PUBLICATION_COUNTRY', 'MEDIUM_FORMAT', 'PERSNAME', 'SCALE',
-                   'SUBJECT', 'WORKS', 'SIZE', 'TYPE_FIRST_CREATOR_PERS', 'TYPE_FIRST_CREATOR_CORP', 'COLLECTION_TYPE',
-                   'PUBLICATION_COUNTRY']}
+                   'SUBJECT', 'WORKS', 'SIZE', 'TYPE_FIRST_CREATOR_PERS', 'TYPE_FIRST_CREATOR_CORP', 'COLLECTION_TYPE']}
 
 
 class FieldMapper:

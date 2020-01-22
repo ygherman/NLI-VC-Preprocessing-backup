@@ -129,6 +129,11 @@ def order_archival_material(df_arch_mat_auth):
     return df_arch_mat_auth, df_arch_mat_search, arch_mat_mapping_dict, arch_mat_search_dict
 
 
+def order_credits(df_credits):
+    df_credits['597'] = '$$a' + df_credits['קרדיט עברית'].map(str) + '$$b' + df_credits['קרדיט אנגלית']
+    return df_credits
+
+
 class Authority:
     BASE_PATH = Path.cwd()
 
@@ -165,6 +170,9 @@ class Authority:
         df_languages, languages_cols = create_df_from_gs(spreadsheet, 'שפה')
         df_languages = df_languages.set_index('שם שפה עברית')
 
+        df_credits, credits_col = create_df_from_gs(spreadsheet, 'קרדיטים')
+        df_credits = df_credits.set_index('סימול האוסף')
+
         df_level, level_cols = create_df_from_gs(spreadsheet, 'רמת תיאור')
 
         self.df_media_format_auth, self.media_format_mapping_dict = order_media_format(df_media_format_auth)
@@ -180,6 +188,9 @@ class Authority:
 
         self.roles_dict = roles_dict
         self.df_level = df_level
+        self.df_credits = order_credits(df_credits)
+
+
 
 
 if __name__ != '__main__':

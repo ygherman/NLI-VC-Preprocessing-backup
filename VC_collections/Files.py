@@ -298,27 +298,28 @@ def get_branch_colletionID(branch='', collection_id='', batch=False):
     :param branch: the branch (Architect, Dance, Design or Theater
     :param collection_id: The collection ID
     :param batch: if the calling results from a batch process
-    :return: The branch and the collection ID
+    :return: The cms, branch and the collection ID
     """
     if not batch:
         while True:
-            CMS = input("Preprecessing for Aleph - write 'Aleph'; Preprocessing for Alma - write 'Alma")
-            CMS = CMS.lower()
-
+            CMS = "alma"
             branch = input("Please enter the name of the Branch (Architect, Design, Dance, Theater): ")
             branch = str(branch)
-            if branch[0].islower():
-                branch = branch.capitalize()
-            if branch not in ['Dance', 'Architect', 'Theater', 'Design']:
-                print('need to choose one of: Architect, Design, Dance, Theater')
+            try:
+                if branch[0].islower():
+                    branch = branch.capitalize()
+                if branch not in ['Dance', 'Architect', 'Theater', 'Design']:
+                    print('need to choose one of: Architect, Design, Dance, Theater')
+                    continue
+                else:
+                    # we're happy with the value given.
+                    break
+            except IndexError:
+                print("Wrong value, try again!")
                 continue
-            else:
-                # we're happy with the value given.
-                
-                break
 
         while True:
-            collection_id = input("please enter the Collection ID:")
+            collection_id = input("please enter the Collection ID: ")
             if not collection_id:
                 print("Please enter a collectionID.")
             else:
@@ -351,3 +352,4 @@ def create_df_from_gs(spreadsheet, worksheet):
     df.replace(np.nan, '', inplace=True)
 
     return df, cols
+

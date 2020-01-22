@@ -448,6 +448,10 @@ def clean_creators(collection: Collection) -> Collection:
 
     df = unique_creators(df)
     correct_relators(collection, authority_role_list, roles, role_not_found, temp_role_dict)
+
+    df['COMBINED_CREATORS'] = df['COMBINED_CREATORS'].str.replace(";;", ";")
+
+
     collection.full_catalog = df
 
     return collection

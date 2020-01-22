@@ -28,7 +28,7 @@ import sys
 import pandas as pd
 
 from VC_collections.columns import drop_col_if_exists
-from VC_collections.value import clean_text, find_nth
+from VC_collections.value import find_nth
 
 # ROOTID finder
 ROOTID_finder = lambda x: x[:find_nth(x, '-', x.count('-'))] if '-' in x else ''
@@ -80,6 +80,7 @@ def get_alma_sid(custom04_path, collectionID, df):
     # parse sysno file
     xl2 = pd.ExcelFile(alma_sysno_file)
     df_alma = xl2.parse(0)
+    df_alma = df_alma.applymap(str)
 
     df_alma = df_alma.set_index(list(df_alma.columns)[1])
     df_alma.index.names = ['סימול']
@@ -91,7 +92,8 @@ def get_alma_sid(custom04_path, collectionID, df):
     # convert MMS ID col to string
 
     df = df.merge(df_alma, on='סימול', how='left')
-    print(df[df['MMS ID'].isna()])
+
+    print(f'these MMSIDs were not found\n', df[df['MMS ID'].isna()])
     df = drop_col_if_exists(df, '911_1')
     try:
         df['MMS ID'] = df['MMS ID'].astype(str)
@@ -152,27 +154,25 @@ def get_root_title(df, index):
         Get the title of the parent record
     :param df: The original dataframe,
     :param df: The original dataframe,
-    :param index:
+    :param mms_id:
     :return:
     """
 
-    # print("index sent to get root title function:", index, "Level:", df.loc[index, '351'])
-    if df.loc[index, '351'] == '$$cSection Record':
-        return ''
+    if df.index.name == 'סימול':
+        check_col = list(df.index.values)
+    elif 'סימול' in list(df.columns):
+        check_col = df['סימול']
     else:
-        clean_column_names = [clean_text(x) for x in list(df.columns)]
-        if 'סימולאב' in clean_column_names:
-            parent_id = 'סימולאב'
-            root_id = df.loc[index, parent_id]
-        elif 'parent' in clean_column_names:
-            parent_id = 'parent'
-            root_id = df.loc[index, parent_id]
-        else:
-            root_id = ROOTID_finder(index)
-        if 'כותרת' in list(df.columns):
-            title = df.loc[root_id, 'כותרת']
-        else:
-            title = df.loc[root_id, '24510'].strip('$$a')
+        sys.stderr.write("[ERROR] no סימול in table, check table")
+        sys.exit()
+
+    try:
+        root_call_number = ROOTID_finder(df.loc[index, 'סימול']) in check_col
+        root_index = df[df['סימול'] == root_call_number].index.tolist()[0]
+        title = df.loc[root_index, '24510'].strip('$$a')
+    except:
+        print(f"ROOT MMS ID of {index} is not in table - check table! and run again")
+        sys.exit()
 
     return title.strip()
 

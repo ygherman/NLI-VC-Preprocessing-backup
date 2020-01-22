@@ -36,8 +36,6 @@ def create_ROOT_id(collection):
     df['ROOTID'] = df.index
     df.loc[df.index[1:], 'ROOTID'] = df.loc[df.index[1:], 'ROOTID'].apply(ROOTID_finder)
 
-    # collection.logger.info(f'Collection is of type {type(collection)}')
-
     # reset ROOTID of section record to null
     if len(df[df['LEVEL'] == 'Section Record']) == 1:
         df.loc[collection.collection_id, "ROOTID"] = ''
@@ -63,6 +61,11 @@ def remove_unnecessary_cols(collection):
 
 
 def clean_headers(df):
+    """
+
+    :param df: the original dataframe
+    :return:
+    """
     headers = list(df.columns)
     headers = [x.upper().strip() for x in headers]
     df.columns = headers
@@ -289,13 +292,13 @@ def add_MMSIDs_to_full_catalog(collection):
     except:
         print(f'There is no file in path: {file_path}')
 
-
     return collection
 
 
 def main():
     start_time = timeit.default_timer()
 
+    # create Collection instance
     CMS, branch, collection_id = get_branch_colletionID()
     collection = Collection(CMS, branch, collection_id)
     collection.logger.info(f'\n Starting new preprocess of {collection_id}, at: {datetime.now()}')
@@ -303,7 +306,6 @@ def main():
     collection.logger.info(f'[HEADERS] Changing Hebrew column names into English - according to field_mapper, '
                            f'for {collection.collection_id}, collection record table and collection catalog'
                            f'table')
-
     collection.logger.info(f'[HEADERS] Cleaning headers for {collection_id} Catalog, at:   {datetime.now()}')
     collection.full_catalog = drop_cols_not_in_mapping(collection.full_catalog)
 
@@ -361,12 +363,12 @@ def main():
 
     collection.temp_preprocess_file()
 
-    export_entire_catalog(collection, stage='FINAL')
+    export_entire_catalog(collection, collection.full_catalog, stage='FINAL')
 
     elapsed = timeit.default_timer() - start_time
     collection.logger.info(f'Execution Time: {elapsed}')
 
-    collection = add_MMSIDs_to_full_catalog(collection)
+    # collection = add_MMSIDs_to_full_catalog(collection)
     collection.temp_preprocess_file(stage="PRE")
 
 

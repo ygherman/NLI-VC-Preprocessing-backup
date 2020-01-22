@@ -50,10 +50,11 @@ def main():
     # create 008
     collection.df_final_data = marc.create_MARC_initial_008(collection.df_final_data)
 
-    # create 520 (תיאור)
+    # create 351 (רמת תיאור)
     collection.df_final_data = marc.create_MARC_351_LDR(collection.df_final_data)
 
-    # create 351 (רמת תיאור)
+
+    # create 520 (תיאור)
     collection.df_final_data = marc.create_MARC_520(collection.df_final_data)
 
     # create 245 (כותרת)
@@ -66,31 +67,95 @@ def main():
     collection.df_final_data = marc.create_MARC_700_710(collection.df_final_data)
 
     # create 300 (EXTENT) (היקף)
+    collection.logger.info("[MARC 300] Creating ")
     collection.df_final_data = marc.create_MARC_300(collection.df_final_data)
 
     # create 655 (ARCHIVAL_MATERIAL) (סוג חומר)
+    collection.logger.info("[MARC 655] Creating ")
     collection.df_final_data = marc.create_marc_655(collection.df_final_data)
 
     # create 041 (LANGUAGE) (שפה)
+    collection.logger.info("[MARC 041] Creating ")
     collection.df_final_data = marc.create_MARC_041(collection.df_final_data)
 
     ####################################################
     ### CREATE  COPYRIGHT FIELDS WITH DEFAULT VALUES ###
     ### fields: 542, 540, 506
     ####################################################
+    collection.logger.info("[MARC 542, 540, 506] Creating default copyright fields")
+
     collection.df_final_data = marc.create_MARC_defualt_copyright(collection.df_final_data)
 
-    # create 260 (DATE fields, anc PUBLICATION_COUNTRY) (מדינת פרסום, תאריך מנורמל מוקדם, תאריך מנורמל מאוחר)
-    collection.df_final_data = marc.create_MARC_260(collection.df_final_data, 'מדינת הפרסום/הצילום',
-                                                    ['תאריך מנורמל מוקדם', 'תאריך מנורמל מאוחר'])
+    # create 260 (DATE fields, and PUBLICATION_COUNTRY) (מדינת פרסום, תאריך מנורמל מוקדם, תאריך מנורמל מאוחר)
+    collection.logger.info("[MARC 260] Creating")
 
-    # create 921, 933 (CATALOGUER, CATALOGING DATE) (שם הרושם, תאריך הרישום)
+    collection.df_final_data = marc.create_MARC_260(collection.df_final_data, 'מדינת הפרסום/הצילום',
+                                                    ['תאריך מנורמל מוקדם', 'תאריך מנורמל מאוחר', 'תאריך חופשי'])
+
+
+    # add 597 (CREDIT)
+    collection = marc.add_MARC_597(collection)
+    collection.logger.info("[MARC 597] Creating")
+
+    # create 921, 933 (CATALOGUER, CATALOGING DATE)
+    collection.logger.info("[MARC 921/933] Creating")
+
+    collection.df_final_data = marc.create_MARC_921_933(collection.df_final_data)
+
+    # create 500 (NOTES) and other fields:
+    collection.logger.info("[MARC 500] Creating")
+
+    collection.df_final_data = marc.create_MARC_500(collection.df_final_data)
+    collection.df_final_data = marc.create_MARC_500s_4collection(collection.df_final_data)
+
+
+    # create 999 (Default values: NOULI, NOOCLC, ARCHIVE)
+    collection.df_final_data = marc.create_MARC_999(collection.df_final_data)
+
+    # create BAS=VIS, in alma BAS -> 906
+    collection.df_final_data = marc.create_MARC_BAS(collection.df_final_data)
+
+    # create FMT
+    collection.df_final_data = marc.create_MARC_FMT(collection.df_final_data)
+
+    # create OWN (Default value: NNL)
+    collection.df_final_data = marc.create_MARC_OWN(collection.df_final_data)
+
+    # create 773 (former LKR)
+    collection.logger.info("[MARC 773] Creating")
+
+    collection.df_final_data = marc.create_MARC_773(collection.df_final_data)
+
+    # create 336 (#TODO add description)
+    collection.df_final_data, df_explode_336 = marc.create_MARC_336(collection.df_final_data)
+    df2 = pd.concat([collection.df_final_data, df_explode_336], axis=1)
+
+    # create 337 338 (#TODO add description)
+    collection.df_final_data = marc.create_MARC_337_338(collection.df_final_data)
+
+    # create 337 338 (#TODO add description)
+    collection.df_final_data = marc.create_MARC_534(collection.df_final_data)
+
+    collection.temp_preprocess_file(stage="POST")
+
+
+    # TODO ADD 907 (#Rossetta link)
+    collection = marc.add_MARC_907(collection)
+
+    # create MARC Catalog
+    collection = marc.create_MARC_final_table(collection)
+
+    #
+
+
+
+
 
 
     ###############################################
     ### export final dataframe to check process ###
     ###############################################
-    collection.temp_preprocess_file(stage="POST")
+    # collection.temp_preprocess_file(stage="POST")
 
     ###############################################
     ###      how much time the process ran?     ###
