@@ -1,4 +1,5 @@
 import collections
+import logging
 import pprint
 
 import numpy as np
@@ -176,18 +177,19 @@ def replace_NaN(df):
 
 def clean_tables(collection):
     # replace all NaN values with empty string
-    collection.logger.info(f'Replacing all NaN values with empty string in {collection.collection_id} Catalog records,'
+    logger = logging.getLogger(__name__)
+    logger.info(f'Replacing all NaN values with empty string in {collection.collection_id} Catalog records,'
                            f'applying {replace_NaN.__name__} function.')
     collection.df_catalog = replace_NaN(collection.df_catalog)
-    collection.logger.info(f'Replacing all NaN values with empty string in {collection.collection_id}, Collection'
+    logger.info(f'Replacing all NaN values with empty string in {collection.collection_id}, Collection'
                            f' record, applying {replace_NaN.__name__} function.')
     collection.df_collection = replace_NaN(collection.df_collection)
 
     # remove line breaks
-    collection.logger.info(f'Replacing all line breaks in {collection.collection_id}, Catalog records,'
+    logger.info(f'Replacing all line breaks in {collection.collection_id}, Catalog records,'
                            f'applying {remove_line_breaks.__name__} function.')
     collection.df_catalog = remove_line_breaks(collection.df_catalog)
-    collection.logger.info(f'Replacing all line breaks in {collection.collection_id}, Collection record,'
+    logger.info(f'Replacing all line breaks in {collection.collection_id}, Collection record,'
                            f'applying {remove_line_breaks.__name__} function.')
     collection.df_collection = remove_line_breaks(collection.df_collection)
 
@@ -195,7 +197,7 @@ def clean_tables(collection):
     # clean text columns
 
     for field in field_types_dict['text']:
-        collection.logger.info(f'[{field}] Cleaning {field} column - Removing whitespaces (applying  {clean_text_cols.__name__} ')
+        logger.info(f'[{field}] Cleaning {field} column - Removing whitespaces (applying  {clean_text_cols.__name__}) ')
         if column_exists(collection.df_collection, field) and not is_column_empty(collection.df_collection, field):
             collection.df_collection = clean_text_cols(collection.df_collection, field)
         if column_exists(collection.df_catalog, field) and not is_column_empty(collection.df_catalog, field):
@@ -203,14 +205,14 @@ def clean_tables(collection):
 
     # clean values columns - rstrip_semicolon, strip_whitespace_af_semicolon
     for field in field_types_dict['value_list']:
-        collection.logger.info(
+        logger.info(
             f'[{field}] Cleaning {field} column - Removing whitespaces (applying  {rstrip_semicolon.__name__} ')
         if column_exists(collection.df_collection, field) and not is_column_empty(collection.df_collection, field):
             collection.df_collection = rstrip_semicolon(collection.df_collection, field)
         if column_exists(collection.df_catalog, field) and not is_column_empty(collection.df_catalog, field):
             collection.df_catalog = rstrip_semicolon(collection.df_catalog, field)
 
-        collection.logger.info(
+        logger.info(
             f'[{field}] Cleaning {field} column - Removing whitespaces (applying  {strip_whitespace_af_semicolon.__name__} ')
         if column_exists(collection.df_collection, field) and not is_column_empty(collection.df_collection, field):
             collection.df_collection = strip_whitespace_af_semicolon(collection.df_collection, field)

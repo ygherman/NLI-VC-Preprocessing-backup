@@ -1356,7 +1356,14 @@ def create_MARC_584(df):
         return df
 
 
-def create_907_dict(ROS_file):
+def create_907_dict(ROS_file: minidom) -> dict:
+    """
+        The function takes the MARCxml file of the collection, which resides in ./[branch]/[collection]/Digitization/ROS
+        directory, and that was parsed into a minidom xml object, extract the MMS ID (001 tag) and the 907 (Rosetta
+        link) field, with all it's subfields. Saves the MMS ID and 907 subfield in a dictionary of dictionaries.
+    :param ROS_file: The MARCxml file of the collection parsed into a minidom object.
+    :return: dictionary of dictionaries, which key is the MMS ID and the inner dictionary is the extracted 907 field
+    """
     d = {}
     for record in ROS_file.getElementsByTagName('record'):
         # for e in record.getElementsByTagName('controlfield'):

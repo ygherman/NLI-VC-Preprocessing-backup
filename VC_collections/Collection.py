@@ -21,21 +21,6 @@ from .files import create_directory, write_excel
 from .files import get_google_drive_api_path
 
 
-def initialize_logging(reports_path, collection_id):
-    logging.basicConfig(level=logging.DEBUG,
-                        filename=reports_path / (collection_id + '.log'),
-                        format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-                        datefmt='%y-%m-%d %H:%M',
-                        )
-    fh = logging.FileHandler(filename=reports_path / (collection_id + '.log'))
-    st= logging.StreamHandler()
-    logger = logging.getLogger(__name__)
-    logger.addHandler(fh)
-    logger.addHandler(st)
-
-    return logger
-
-
 def get_google_drive_credentials():
     scope = ['https://www.googleapis.com/auth/spreadsheets',
              "https://www.googleapis.com/auth/drive.file",
@@ -120,7 +105,7 @@ def export_entire_catalog(collection, df_sheets_dict, stage):
                                                   "_PRE1_FINAL.xlsx")
 
 
-    collection.logger.info(f'Creating Excel: Saving [{stage}] file at {file_path}. ')
+
     if type(df_sheets_dict) == list:
         write_excel(list(df_sheets_dict.values()), file_path, list(df_sheets_dict.keys()))
 
@@ -131,7 +116,10 @@ def export_entire_catalog(collection, df_sheets_dict, stage):
 
 
 def remove_unnamed_cols(df):
+    logger = logging.getLogger(__name__)
     columns = [col for col in list(df.columns) if 'unnamed' not in col.lower()]
+    unnamed_columns = [x for x in list(df.columns) if x not in columns]
+    logger.info(f'Removing  unnamed columns. Found {len(unnamed_columns)} ')
     return df[columns]
 
 
@@ -173,8 +161,8 @@ def remove_instructions_row(df):
         return df
 
 
-def fill_missing_date(df):
-
+def fill_missing_cataloging_date(df):
+    logger = logging.getLogger(__name__)
     if 'DATE_CATALOGING' in list(df.columns):
         col = 'DATE_CATALOGING'
     elif 'תאריך הרישום' in list(df.columns):
@@ -182,33 +170,46 @@ def fill_missing_date(df):
     else:
         sys.stderr.write("There is no column for cataloging date in table, please check!")
         sys.exit()
-
     print(f"max date in {col} is: {pd.to_datetime(df[col], errors='coerce').max()}")
-
     latest_date = pd.to_datetime(df[col], errors='coerce').max()
-
+    logger.info(f'[CATALOGING_DATE] Filling missing cataloging date values with calculated max cataloging date')
     df[col].fillna(latest_date, inplace=True)
-
     return df
 
 
 def clean_catalog(df):
     """
-        initial cleanup of the row catalog
+        initial cleanup of the row catalog:
+        - remove instruction/guideline row (mostly row 2)
+        - fill n/a values with empty string
+        - removing columns which were added because of indexing and unindexing with 'unnamed' in heading
+        - fill missing dates - cataloging date
+        :param df: The dataframe to cleanup
+        :return: the cleanup dataframe
+
     """
-    df = df.rename(columns={'סימול/מספר מזהה': 'סימול',
-                                                 'סימול פרויקט': 'סימול'})
+    df = df.rename(columns={'סימול/מספר מזהה': 'סימול', 'סימול פרויקט': 'סימול'})
     df = df.fillna('')
-    if df.iloc[0].str.contains('שדה חובה!!').any() or df.iloc[0].str.contains('שדה חובה').any():
-        df = df[1:]
-
+    df = remove_instructions_row(df)
     df = remove_unnamed_cols(df)
-
     df = remove_trailing_zero(df)
-
-    df = fill_missing_date(df)
-
+    df = fill_missing_cataloging_date(df)
     return df
+
+
+def strip_column_named(cols_names):
+    new_columns_names = []
+    for col in cols_names:
+        col = ''.join(e.strip().lower() for e in str(col) if e.isalnum())
+        new_columns_names.append(col)
+    return new_columns_names
+
+
+def map_field_names_to_english(col_names):
+    # replace the field name according to the generic field mapper
+    new_col_names = map(field_mapper.get, col_names)
+    new_col_names = [x.upper() for x in new_col_names]
+    return new_col_names
 
 
 class Collection:
@@ -262,22 +263,12 @@ class Collection:
         :param df: original dataframe
         :return: the modified dataframe with the new column headers
         """
-        new_columns = []
-
-        # strip column names from special characters and whitespaces.
-        for col in df.columns.values:
-            col = ''.join(e for e in str(col) if e.isalnum())
-            new_columns.append(col)
-
-        new_columns1 = [col.strip().lower() for col in new_columns]
-
-        df.columns = new_columns1
-
-        # replace the field name according to the generic field mapper
-        df = df.rename(columns=field_mapper)
+        logger = logging.getLogger(__name__)
+        logger.info("[HEADERS] strip column names from special characters and whitespaces.")
+        df.columns = strip_column_named(list(df.columns))
+        logger.info(f'[HEADERS] Changing Hebrew column names into English - according to field_mapper.')
+        df.columns = map_field_names_to_english(list(df.columns))
         df = remove_unnamed_cols(df)
-        df.columns = [x.upper() for x in list(df.columns)]
-
         return df
 
     @staticmethod
@@ -459,11 +450,18 @@ class Collection:
               self.aleph_custom04_path)
 
         # set up logger for collection instance
-        self.logger = initialize_logging(self.data_path_reports, collection_id)
+        # initialize_logger(self.branch, self.collection_id)
+        # self.logger = logging.getLogger(__name__)
+        logger = logging.getLogger(__name__)
 
         client, self.google_sheet_file_id, self.google_sheet_file_name = find_catalog_gspread(connect_to_google_drive(), self.collection_id)
-        self.logger.info("Creating ")
+
+        # self.logger.info("Creating ")
+        logger.info("Creating ")
+
         self.dfs = create_xl_from_gspread(client, self.google_sheet_file_id)
+
+
 
         self.catalog_dfs = self.fetch_data()
         if len(self.catalog_dfs) == 0:
@@ -490,6 +488,7 @@ class Collection:
             # print(f'column of קטלוג סופי are: {[index, col for (index, col) in enumrate(self.dfs.columns)]}'
 
         # turn headers to English
+        logger.info(f'Creating Excel: Saving file ')
         export_entire_catalog(self, self.dfs, stage='PRE1_FINAL')
         self.create_catalog_metadata_file()
 

@@ -1,4 +1,5 @@
 import difflib
+import logging
 import os
 import pprint
 import re
@@ -13,6 +14,8 @@ from VC_collections.columns import clean_text_cols, strip_whitespace_af_semicolo
     drop_col_if_exists, replace_NaN
 from VC_collections.files import write_excel
 from VC_collections.value import clean_name
+
+logger = logging.getLogger(__name__)
 
 
 def split_creators_by_type(df, col_name):
@@ -333,7 +336,7 @@ def unique_creators(df):
     return df
 
 
-def map_relators(collection, df, authority_role_list):
+def map_relators(df, authority_role_list):
     """
 
     :param authority_role_list:
@@ -369,7 +372,7 @@ def map_relators(collection, df, authority_role_list):
     role_not_found = list(set(x for x in role_not_found if x != 'nan' or x != ''))
 
     if len(indexes_roles_not_found) != 0:
-        collection.logger.error(f"[CREATORS] Roles check - list of roles not found in roles authority list:"
+        logger.error(f"[CREATORS] Roles check - list of roles not found in roles authority list:"
                                 f" {'; '.join(role_not_found)}.")
     return roles, role_not_found, temp_role_dict
 
@@ -415,7 +418,7 @@ def correct_relators(collection: Collection, authority_role_list: list,
         create_error_report()
 
     else:
-        collection.logger.info("[ROLES] all values matched to creator roles controlled vocabulary")
+        logger.info("[ROLES] all values matched to creator roles controlled vocabulary")
 
 
 def clean_creators(collection: Collection) -> Collection:
@@ -442,7 +445,7 @@ def clean_creators(collection: Collection) -> Collection:
 
     assert 'COMBINED_CREATORS' in list(df.columns), print(list(df.columns))
 
-    roles, role_not_found, temp_role_dict = map_relators(collection, df, authority_role_list)
+    roles, role_not_found, temp_role_dict = map_relators(df, authority_role_list)
     df = clean_text_cols(df, 'COMBINED_CREATORS')
     df = strip_whitespace_af_semicolon(df, 'COMBINED_CREATORS')
 
@@ -531,7 +534,6 @@ def fix_original(col, error_words, new_values):
 
 
 def check_values_against_cvoc(collection, col_name, new_values):
-    collection.logger.info(f'[{col_name}] Starting to work on {col_name} column')
     df = collection.full_catalog
     test_list = [x.split(';') for x in df[col_name].tolist()]
     vals_to_check = [item for sublist in test_list for item in sublist]
@@ -541,7 +543,7 @@ def check_values_against_cvoc(collection, col_name, new_values):
     if len(values_not_found) > 0:
         print("These values were not found: ", values_not_found)
     else:
-        collection.logger.info(f'[{col_name.upper()}] Values corrected in column {col_name}')
+        logger.info(f'[{col_name.upper()}] Values corrected in column {col_name}')
 
     collection.full_catalog = df
     return collection

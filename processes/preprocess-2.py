@@ -3,6 +3,7 @@ import time
 import timeit
 
 from VC_collections import marc, project
+from VC_collections.logger import initialize_logger
 
 sys.path.insert(1, 'C:/Users/Yaelg/Google Drive/National_Library/Python/VC_Preprocessing')
 from VC_collections.files import get_branch_colletionID
@@ -12,7 +13,7 @@ from VC_collections.authorities import *
 from VC_collections.Collection import Collection
 
 
-def retrieve_colletion():
+def retrieve_collection():
     CMS, branch, collection_id = get_branch_colletionID()
     return Collection(CMS, branch, collection_id)
 
@@ -26,8 +27,10 @@ def is_collection_postprocess1(collection):
 
 def main():
     start_time = timeit.default_timer()
-    collection = retrieve_colletion()
-    collection.logger.info(f'\nStarting new preprocess {"/".join(str(sys.modules[__name__])[:-1].split("/")[-3:])} of '
+    collection = retrieve_collection()
+    initialize_logger(collection.branch, collection.collection_id)
+    logger = logging.getLogger(__name__)
+    logger.info(f'\nStarting new preprocess {"/".join(str(sys.modules[__name__])[:-1].split("/")[-3:])} of '
                            f'{collection.collection_id}, at: {datetime.now()}')
     time.sleep(0.5)
 
@@ -67,27 +70,27 @@ def main():
     collection.df_final_data = marc.create_MARC_700_710(collection.df_final_data)
 
     # create 300 (EXTENT) (היקף)
-    collection.logger.info("[MARC 300] Creating ")
+    logger.info("[MARC 300] Creating ")
     collection.df_final_data = marc.create_MARC_300(collection.df_final_data)
 
     # create 655 (ARCHIVAL_MATERIAL) (סוג חומר)
-    collection.logger.info("[MARC 655] Creating ")
+    logger.info("[MARC 655] Creating ")
     collection.df_final_data = marc.create_marc_655(collection.df_final_data)
 
     # create 041 (LANGUAGE) (שפה)
-    collection.logger.info("[MARC 041] Creating ")
+    logger.info("[MARC 041] Creating ")
     collection.df_final_data = marc.create_MARC_041(collection.df_final_data)
 
     ####################################################
     ### CREATE  COPYRIGHT FIELDS WITH DEFAULT VALUES ###
     ### fields: 542, 540, 506
     ####################################################
-    collection.logger.info("[MARC 542, 540, 506] Creating default copyright fields")
+    logger.info("[MARC 542, 540, 506] Creating default copyright fields")
 
     collection.df_final_data = marc.create_MARC_defualt_copyright(collection.df_final_data)
 
     # create 260 (DATE fields, and PUBLICATION_COUNTRY) (מדינת פרסום, תאריך מנורמל מוקדם, תאריך מנורמל מאוחר)
-    collection.logger.info("[MARC 260] Creating")
+    logger.info("[MARC 260] Creating")
 
     collection.df_final_data = marc.create_MARC_260(collection.df_final_data, 'מדינת הפרסום/הצילום',
                                                     ['תאריך מנורמל מוקדם', 'תאריך מנורמל מאוחר', 'תאריך חופשי'])
@@ -95,15 +98,15 @@ def main():
 
     # add 597 (CREDIT)
     collection = marc.add_MARC_597(collection)
-    collection.logger.info("[MARC 597] Creating")
+    logger.info("[MARC 597] Creating")
 
     # create 921, 933 (CATALOGUER, CATALOGING DATE)
-    collection.logger.info("[MARC 921/933] Creating")
+    logger.info("[MARC 921/933] Creating")
 
     collection.df_final_data = marc.create_MARC_921_933(collection.df_final_data)
 
     # create 500 (NOTES) and other fields:
-    collection.logger.info("[MARC 500] Creating")
+    logger.info("[MARC 500] Creating")
 
     collection.df_final_data = marc.create_MARC_500(collection.df_final_data)
     collection.df_final_data = marc.create_MARC_500s_4collection(collection.df_final_data)
@@ -122,7 +125,7 @@ def main():
     collection.df_final_data = marc.create_MARC_OWN(collection.df_final_data)
 
     # create 773 (former LKR)
-    collection.logger.info("[MARC 773] Creating")
+    logger.info("[MARC 773] Creating")
 
     collection.df_final_data = marc.create_MARC_773(collection.df_final_data)
 
@@ -161,7 +164,7 @@ def main():
     ###      how much time the process ran?     ###
     ###############################################
     elapsed = timeit.default_timer() - start_time
-    collection.logger.info(f'Execution Time: {elapsed}')
+    logger.info(f'Execution Time: {elapsed}')
 
 
 if __name__ == '__main__':
