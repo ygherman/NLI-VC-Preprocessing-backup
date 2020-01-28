@@ -1,4 +1,15 @@
+import datetime
+
 from VC_collections.Collection import find_catalog_gspread, connect_to_google_drive
+
+
+def create_date_for_921_933(date_string):
+    d = datetime.datetime.strptime(date_string, "%Y-%m-%d %H:%M")
+    return datetime.date.strftime(d, "%y%m")
+
+# df['תאריך הרישום'].apply(create_date_for_921_933)
+
+
 
 #
 # collection = Collection('Alma', 'Architect', 'POrWe')

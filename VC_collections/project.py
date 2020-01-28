@@ -22,6 +22,7 @@ VERSION
     
     $
 """
+import logging
 import os
 import sys
 
@@ -63,7 +64,7 @@ def get_aleph_sid(custom04_path, collectionID, df):
 
     return df, df_aleph
 
-
+# TODO refactor this function
 def get_alma_sid(custom04_path, collectionID, df):
     """
         Get Aleph sys ID
@@ -93,6 +94,7 @@ def get_alma_sid(custom04_path, collectionID, df):
 
     df = df.merge(df_alma, on='סימול', how='left')
 
+    # todo change this to logger
     print(f'these MMSIDs were not found\n', df[df['MMS ID'].isna()])
     df = drop_col_if_exists(df, '911_1')
     try:
@@ -157,21 +159,22 @@ def get_root_title(df, index):
     :param mms_id:
     :return:
     """
-
+    logger = logging.getLogger(__name__)
     if df.index.name == 'סימול':
-        check_col = list(df.index.values)
+        check_col_series = list(df.index.values)
     elif 'סימול' in list(df.columns):
-        check_col = df['סימול']
+        check_col_series = df['סימול'].tolist()
     else:
-        sys.stderr.write("[ERROR] no סימול in table, check table")
+        logger.error("[ERROR] no [סימול] column in table, check table")
         sys.exit()
 
-    try:
-        root_call_number = ROOTID_finder(df.loc[index, 'סימול']) in check_col
+    root_call_number = ROOTID_finder(df.loc[index, 'סימול'])
+
+    if root_call_number in check_col_series:
         root_index = df[df['סימול'] == root_call_number].index.tolist()[0]
         title = df.loc[root_index, '24510'].strip('$$a')
-    except:
-        print(f"ROOT MMS ID of {index} is not in table - check table! and run again")
+    else:
+        logger.error(f"ROOT MMS ID of {index} is not in table - check table! and run again")
         sys.exit()
 
     return title.strip()

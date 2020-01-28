@@ -351,10 +351,12 @@ def main():
     collection = create_authorities_report(collection, 'WORKS')
 
     logger.info(f'[ARCHIVAL_MATERIAL] Starting to work on ARCHIVAL_MATERIAL column')
-    collection = check_values_against_cvoc(collection, 'ARCHIVAL_MATERIAL', Authority_instance.arch_mat_search_dict)
+    collection.full_catalog = check_values_against_cvoc(collection.full_catalog, 'ARCHIVAL_MATERIAL',
+                                                        Authority_instance.arch_mat_search_dict)
 
     logger.info(f'[MEDIUM_FORMAT] Starting to work on MEDIUM_FORMAT column')
-    collection = check_values_against_cvoc(collection, 'MEDIUM_FORMAT', Authority_instance.media_format_mapping_dict)
+    collection.full_catalog = check_values_against_cvoc(collection.full_catalog, 'MEDIUM_FORMAT',
+                                                        Authority_instance.media_format_mapping_dict)
 
     logger.info("Final file: creating final file")
     collection = create_final_file(collection)

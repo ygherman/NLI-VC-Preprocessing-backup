@@ -336,6 +336,15 @@ def unique_creators(df):
     return df
 
 
+def clean_empty_indexes(indexes_roles_not_found):
+    new_indexes_roles_not_found = []
+    for key, value in indexes_roles_not_found:
+        if key == '':
+            continue
+        new_indexes_roles_not_found.append((key, value))
+    return new_indexes_roles_not_found
+
+
 def map_relators(df, authority_role_list):
     """
 
@@ -370,6 +379,7 @@ def map_relators(df, authority_role_list):
             role_not_found.append(role)
 
     role_not_found = list(set(x for x in role_not_found if x != 'nan' or x != ''))
+    indexes_roles_not_found = clean_empty_indexes(indexes_roles_not_found)
 
     if len(indexes_roles_not_found) != 0:
         logger.error(f"[CREATORS] Roles check - list of roles not found in roles authority list:"
@@ -533,8 +543,8 @@ def fix_original(col, error_words, new_values):
     return missing_errs, col
 
 
-def check_values_against_cvoc(collection, col_name, new_values):
-    df = collection.full_catalog
+def check_values_against_cvoc(df, col_name, new_values):
+    logger = logging.getLogger(__name__)
     test_list = [x.split(';') for x in df[col_name].tolist()]
     vals_to_check = [item for sublist in test_list for item in sublist]
     vals_to_check = list(set(vals_to_check))
@@ -545,5 +555,4 @@ def check_values_against_cvoc(collection, col_name, new_values):
     else:
         logger.info(f'[{col_name.upper()}] Values corrected in column {col_name}')
 
-    collection.full_catalog = df
-    return collection
+    return df

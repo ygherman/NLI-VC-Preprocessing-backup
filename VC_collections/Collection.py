@@ -172,8 +172,10 @@ def fill_missing_cataloging_date(df):
         sys.exit()
     print(f"max date in {col} is: {pd.to_datetime(df[col], errors='coerce').max()}")
     latest_date = pd.to_datetime(df[col], errors='coerce').max()
-    logger.info(f'[CATALOGING_DATE] Filling missing cataloging date values with calculated max cataloging date')
-    df[col].fillna(latest_date, inplace=True)
+
+    if df[col].isna().sum()>0:
+        logger.info(f'[CATALOGING_DATE] Filling missing cataloging date values with calculated max cataloging date')
+        df[col].fillna(latest_date, inplace=True)
     return df
 
 

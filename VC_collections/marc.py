@@ -139,7 +139,7 @@ def create_MARC_351_LDR(df):
         col
         df['LDR'] = df[col].apply(define_LDR)
         df['351'] = df[col].apply(lambda x: '$$c' + x)
-        df = drop_col_if_exists(df, 'רמתתיאור')
+        df = drop_col_if_exists(df, col)
     except NameError:
         print("col variable not defined, cannot find")
         pass
@@ -293,8 +293,10 @@ def first_creator(x):
 
     """
     if ";" in x:
-        x = x[: x.find(";")]
-        return x
+        new_x = x[: x.find(";")]
+        if new_x == '[]':
+            return x.split(';')[1]
+        return new_x
     else:
         return x
 
@@ -392,7 +394,7 @@ def aleph_creators(df, col_name, mode='PERS'):
             creator = creator.strip()
             new_creators.append(creator)
 
-        df.at[index, col_name] = ";".join(new_creators)
+        df.loc[index, col_name] = ";".join(new_creators)
     df = remove_duplicate_in_column(df, col_name)
     return df
 
@@ -582,39 +584,34 @@ def create_marc_655(df):
     elif column_exists(df, 'סוגהחומר'):
         col = 'סוגהחומר'
     elif column_exists(df, 'סוג החומר'):
-        col = 'סוגהחומר'
+        col = 'סוג החומר'
     elif column_exists(df, 'סוג חומר'):
         col = 'סוגהחומר'
     try:
         col
     except NameError:
-        print("col variable not defined")
+        sys.stderr("col variable not defined")
         pass
     else:
         arch_mat_col = process.extractOne(col, list(df.columns))[0]
-
-        df_arch_mat_mapping = Authority_instance.df_arch_mat_auth.loc[
-            Authority_instance.df_arch_mat_auth.index, ['ARCHIVAL_MATERIAL', 'MARC21 655 7', 'rdacontent 336']]
-        arch_mat_mapping_dict = pd.Series(df_arch_mat_mapping['MARC21 655 7'].values,
-                                          index=df_arch_mat_mapping.ARCHIVAL_MATERIAL.values).to_dict()
-
-        test_655 = check_values_arch_mat(df, arch_mat_col, arch_mat_mapping_dict)
 
         for index, row in df.iterrows():
             lst_655_7 = row[arch_mat_col].split(";")
             # print(index, '\n', 'before:', lst_655_7)
             lst_655_7 = list(map(str.strip, lst_655_7))
-            temp = list()
+            broader_terms = list()
             final = list()
+
+            # make list of broader ARCHIVAL_MATERIAL terms
             for term in lst_655_7:
                 if ")" in term:
-                    temp.append(re.findall(r'\((.*)\)', term)[0])
-            for term in temp:
+                    broader_terms.append(re.findall(r'\((.*)\)', term)[0])
+            for term in broader_terms:
                 if term == 'תצלומים':
                     continue
                 final.append(term.strip())
             lst_655_7 = lst_655_7 + final
-            lst_655_7 = replace_lst_dict(lst_655_7, arch_mat_mapping_dict)
+            lst_655_7 = replace_lst_dict(lst_655_7, Authority_instance.arch_mat_mapping_dict)
             # print('after:', lst_655_7)
 
             df.loc[index, '655 7'] = ";".join(lst_655_7)
@@ -643,7 +640,7 @@ def project_photographer(df):
 
     return df
 
-
+# TODO change the 506 to the new fields.
 def create_MARC_506_post_copyright(df, cols):
     """
     fuction's input is the entire table as a dataframe and constructs the 506 field according to the POST_COPYRIGHT
@@ -708,7 +705,7 @@ def create_MARC_041(df):
 
     return df
 
-
+# TODO change the 542    to the new fields.
 def create_MARC_542_post_copyright(df, col):
     """
     fuction's input is the entire table as a dataframe and constructs the 542 field according to the POST_COPYRIGHT
@@ -723,7 +720,7 @@ def create_MARC_542_post_copyright(df, col):
 
     return df
 
-
+# TODO change the 540 to the new fields.
 def create_MARC_540_post_copyright(df, col):
     """
     fuction's input is the entire table as a dataframe and constructs the 542 field according to the POST_COPYRIGHT
@@ -935,9 +932,46 @@ def format_cat_date(df):
     return df
 
 
+def create_date_format(string_date):
+    string_date_to_datetime = ''
+    date_formats = ["%Y-%m-%d", "%Y-%m", "%Y-%m", "%Y-%m-%d %H:%M"]
+    i = 0
+    while True:
+        try:
+            string_date_to_datetime = datetime.datetime.strptime(string_date, date_formats[i])
+            break
+        except ValueError:
+            i +=1
+
+    return datetime.datetime.strftime(string_date_to_datetime, "%Y%m")
+
+
+def construct_921(df):
+    df['921'] = df['921'].map(Authority_instance.cataloger_name_mapper)
+    df['921'] = df['921'].map(str) + ' ' + df['תאריך הרישום'].apply(create_date_format)
+    return df['921'].apply(lambda x: '$$a' + x)
+
+
+def construct_933(df):
+    df_explode_933 = df['933'].str.split(';', expand=True).rename(columns=
+                                                                  lambda x: f"933_{x + 1}").replace(np.nan, '')
+    for col in list(df_explode_933):
+        df_explode_933[col] = df_explode_933[col].map(Authority_instance.cataloger_name_mapper)
+    df = pd.concat([df, df_explode_933], axis=1)
+
+    # TODO rewrite this loop - too messy
+    for index, row in df.iterrows():
+        for col in list(df_explode_933.columns):
+            if row[col] == '':
+                continue
+            else:
+                df.loc[index, col] = row[col].map(str) + ' ' + df['תאריך הרישום'].apply(create_date_format)
+    return df
+
+
 def create_MARC_921_933(df):
     """
-        Fields [שם הרושם] [תאריך הרישום] are converted into the format of NLI cataloguer signiture.
+        Fields [שם הרושם] [תאריך הרישום] are converted into the format of NLI cataloguer signature.
     The mapping is defined in the AuthorityFiles Class instance - in the cataloger_name_mapper attribute.
     The format of the MARC encoded 921/933 fields is "F[first name + last name initials] MMYYYY
 
@@ -960,42 +994,21 @@ def create_MARC_921_933(df):
     :param df:
     :return: The modified dataframe with the new 921 and 933 fields
     """
-
-    try:
-        cat_col = process.extractOne('שםהרושם', list(df.columns))[0]
-    except:
-        cat_col = process.extractOne('cataloger', list(df.columns))[0]
-
-    try:
-        cat_date_col = process.extractOne('תאריךהרישום', list(df.columns))[0]
-    except:
-        cat_date_col = process.extractOne('datecataloging', list(df.columns))[0]
-    print("cat_col:", cat_col)
-    print("cat_date_col:", cat_date_col)
-
     # initialize 921/933 columns
-    df['921'] = ''
-    # df['933'] = ''
+    df['921'] = df['שם הרושם']
 
-    if df[cat_col].str.contains(";").any():
+    if df['921'].str.contains(";").any():
         df['933'] = ''
-        df_multi_cat = df[df[cat_col].str.contains(';')]
-        for index, row in df_multi_cat.iterrows():
-            df.loc[index, '921'] = first_creator(row[cat_col])
-            df.loc[index, '933'] = all_rest_creators(row[cat_col])
+        multiple_cataloguer = df[df['921'].str.contains(';')].index.values
+        for index in multiple_cataloguer:
+            first_cataloguer = first_creator(df.loc[index, '921']).strip()
+            df.loc[index, '933'] = all_rest_creators(df.loc[index, '921']).strip()
+            df.loc[index, '921'] = first_cataloguer
 
-    # map and replace the cataloguer names with the correct names of the controlled vocabulary
-    # map and replace the cataloguer names to their Aleph codes
-    # construct the 921 field following the NLI guidelines
-    df['921'] = df[cat_col].map(Authority_instance.cataloger_name_mapper)
-    df['921'] = df['921'].map(str) + ' ' + df[cat_date_col]
-    print('cat_date type: ', df[cat_date_col].dtype)
-    df['921'] = df['921'].apply(lambda x: '$$a' + x)
+    df = construct_921(df)
 
     if column_exists(df, '933'):
-        df['933'] = df['933'].map(Authority_instance.cataloger_name_mapper)
-        df['933'] = df['933'].map(str) + ' ' + df[cat_col]
-        df['933'] = df['933'].apply(lambda x: '$$a' + x)
+        df = construct_933(df)
 
     return df
 
@@ -1010,7 +1023,7 @@ def create_MARC_BAS(df):
     return df
 
 
-def create_MARC_OWN(df):
+def create_MARC_948(df):
     """
         Adding OWN field to the data frame.
     :param df: the original Dataframe
@@ -1275,7 +1288,7 @@ def create_MARC_STA(df):
     df['STA'] = '$$aSUPPRESSED'
     return df
 
-
+# TODO refactor this messy messy function with correct column names
 def create_MARC_590(df):
     def digitization_data(row):
         if column_exists(df, 'estfilesnum'):
@@ -1343,6 +1356,9 @@ def create_MARC_590(df):
 
     if column_exists(df, '590_2'):
         df['590_2'] = df['590_2'].where(df['590_2'] == '$$a', '')
+
+    # TODO - לא כל הרשומות רלוונטיות לזכויות יוצרים - האם לסמן על כל הרשומות כמוכנות לניתוח זכויות יוצרים?
+    df['590_3'] = "מוכן לניתוח זכויות יוצרים"
 
     return df
 
