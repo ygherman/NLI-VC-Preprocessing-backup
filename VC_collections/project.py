@@ -151,7 +151,7 @@ def get_branch_colletionID(branch='', collectionID='', batch=False):
     return CMS, branch, collectionID
 
 
-def get_root_title(df, index):
+def get_root_index_and_title(df, index):
     """
         Get the title of the parent record
     :param df: The original dataframe,
@@ -160,15 +160,15 @@ def get_root_title(df, index):
     :return:
     """
     logger = logging.getLogger(__name__)
-    if df.index.name == 'סימול':
-        check_col_series = list(df.index.values)
-    elif 'סימול' in list(df.columns):
+
+    if 'סימול' in list(df.columns):
         check_col_series = df['סימול'].tolist()
     else:
         logger.error("[ERROR] no [סימול] column in table, check table")
         sys.exit()
 
     root_call_number = ROOTID_finder(df.loc[index, 'סימול'])
+    root_index = df.index[df['סימול'] == root_call_number].tolist()[0]
 
     if root_call_number in check_col_series:
         root_index = df[df['סימול'] == root_call_number].index.tolist()[0]
@@ -177,7 +177,7 @@ def get_root_title(df, index):
         logger.error(f"ROOT MMS ID of {index} is not in table - check table! and run again")
         sys.exit()
 
-    return title.strip()
+    return root_index, title.strip()
 
 
 def get_collection_paths(collectionID):

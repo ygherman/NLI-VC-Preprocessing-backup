@@ -18,6 +18,10 @@ def column_exists(df, col):
     return col in list(df.columns)
 
 
+def more_than_one_value_in_cell(df, col_name) -> bool:
+    return df[col_name].str.contains(";").any()
+
+
 def remove_duplicate_in_column(df, col):
     """
     check for duplicate values for each row in a Column 'col' of a dataframe 'df'

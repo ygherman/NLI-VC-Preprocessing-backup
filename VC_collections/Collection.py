@@ -22,16 +22,20 @@ from .files import get_google_drive_api_path
 
 
 def get_google_drive_credentials():
-    scope = ['https://www.googleapis.com/auth/spreadsheets',
-             "https://www.googleapis.com/auth/drive.file",
-             "https://www.googleapis.com/auth/drive"]
+    scope = [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive",
+    ]
 
     for f in get_google_drive_api_path(Path.cwd()):
         if "google_drive" in f.name:
             clientsecret_file_path = f
             break
     try:
-        return ServiceAccountCredentials.from_json_keyfile_name(clientsecret_file_path / 'client_secret.json', scope)
+        return ServiceAccountCredentials.from_json_keyfile_name(
+            clientsecret_file_path / "client_secret.json", scope
+        )
     except OSError as e:
         sys.stderr.write("problem with creds!")
         return None
@@ -46,28 +50,40 @@ def connect_to_google_drive():
 
 
 def find_catalog_gspread(client, collection_id):
-    files = [file for file in client.list_spreadsheet_files() if collection_id.lower() in file['name'].lower()]
+    files = [
+        file
+        for file in client.list_spreadsheet_files()
+        if collection_id.lower() in file["name"].lower()
+    ]
     if len(files) == 0:
-        sys.stderr.write(f'no file for {collection_id} found in google drive \n')
+        sys.stderr.write(f"no file for {collection_id} found in google drive \n")
         return client, input("if you have the ID of the file, please enter manually: ")
 
     for index, file in enumerate(files):
-        print(index, ':', file['name'])
+        print(index, ":", file["name"])
     while True:
         try:
-            file_index = int(input('which file of the following do you choose? type the index number, '
-                                   'if none of the above return -1: \n'))
-            if file_index== str(-1):
-                return client, input("if you have the ID of the file, please enter manually: ")
+            file_index = int(
+                input(
+                    "which file of the following do you choose? type the index number, "
+                    "if none of the above return -1: \n"
+                )
+            )
+            if file_index == str(-1):
+                return (
+                    client,
+                    input("if you have the ID of the file, please enter manually: "),
+                )
         except ValueError:
             print("Please re-enter the index number of the file you want to parse: ")
             continue
         else:
             break
 
-    return client, files[int(file_index)]['id'], files[int(file_index)]['name']
+    return client, files[int(file_index)]["id"], files[int(file_index)]["name"]
 
 
+# TODO change this function to take only the relevant sheets and not all of them
 def create_xl_from_gspread(client: gspread.client.Client, file_id: str) -> dict:
     """
     the function opens the Google Sheet spreadsheet and  iterates over all the sheets within the file, creates a
@@ -94,20 +110,26 @@ def create_xl_from_gspread(client: gspread.client.Client, file_id: str) -> dict:
 
 
 def export_entire_catalog(collection, df_sheets_dict, stage):
-    if stage == 'PRE_FINAL':
-        file_path = collection.data_path_raw / (collection.collection_id +
-                                                "_PRE_FINAL.xlsx")
-    elif stage == 'FINAL':
-        file_path = collection.data_path_processed / (collection.collection_id +
-                                                      '_final_' + datetime.now().strftime('%Y%m%d') + '.xlsx')
-    elif stage == 'PRE1_FINAL':
-        file_path = collection.data_path_raw / (collection.collection_id +
-                                                  "_PRE1_FINAL.xlsx")
-
-
+    if stage == "PRE_FINAL":
+        file_path = collection.data_path_raw / (
+            collection.collection_id + "_PRE_FINAL.xlsx"
+        )
+    elif stage == "FINAL":
+        file_path = collection.data_path_processed / (
+            collection.collection_id
+            + "_final_"
+            + datetime.now().strftime("%Y%m%d")
+            + ".xlsx"
+        )
+    elif stage == "PRE1_FINAL":
+        file_path = collection.data_path_raw / (
+            collection.collection_id + "_PRE1_FINAL.xlsx"
+        )
 
     if type(df_sheets_dict) == list:
-        write_excel(list(df_sheets_dict.values()), file_path, list(df_sheets_dict.keys()))
+        write_excel(
+            list(df_sheets_dict.values()), file_path, list(df_sheets_dict.keys())
+        )
 
     # TODO check if collectin.full_catalog is of type df or of type dict of dfs?
     else:
@@ -117,33 +139,39 @@ def export_entire_catalog(collection, df_sheets_dict, stage):
 
 def remove_unnamed_cols(df):
     logger = logging.getLogger(__name__)
-    columns = [col for col in list(df.columns) if 'unnamed' not in col.lower()]
+    columns = [col for col in list(df.columns) if "unnamed" not in col.lower()]
     unnamed_columns = [x for x in list(df.columns) if x not in columns]
-    logger.info(f'Removing  unnamed columns. Found {len(unnamed_columns)} ')
+    logger.info(f"Removing  unnamed columns. Found {len(unnamed_columns)} ")
     return df[columns]
 
 
 def remove_trailing_zero(df):
     ad = AlphabetDetector()
     if ad.is_hebrew(df.columns[0]):
-        cols = [col for col in list(df.columns) if 'תאריך' in col] + ['מספר מיכל', 'מספר קבצים מוערך', 'ברקוד']
+        cols = [col for col in list(df.columns) if "תאריך" in col] + [
+            "מספר מיכל",
+            "מספר קבצים מוערך",
+            "ברקוד",
+        ]
     else:
-        cols = [col for col in list(df.columns) if 'תאריך' in col] + ['CONTAINER', 'EST_FILES_NUM', 'BARCODE']
+        cols = [col for col in list(df.columns) if "תאריך" in col] + [
+            "CONTAINER",
+            "EST_FILES_NUM",
+            "BARCODE",
+        ]
     for col in cols:
         if col not in list(df.columns):
-            df[col] = ''
-    df[cols] = df[cols].replace(r'\.0$', '', regex=True)
-
-
+            df[col] = ""
+    df[cols] = df[cols].replace(r"\.0$", "", regex=True)
 
     return df
 
 
 def remove_empty_rows(df):
-    df = df.replace('', np.nan)
-    df = df.dropna(how='all')
-    if 'סימול פרויקט' in list(df.columns):
-        df = df.dropna(subset=['סימול פרויקט'])
+    df = df.replace("", np.nan)
+    df = df.dropna(how="all")
+    if "סימול פרויקט" in list(df.columns):
+        df = df.dropna(subset=["סימול פרויקט"])
 
     if df.index.name is not None:
         print(df.index.name)
@@ -154,29 +182,40 @@ def remove_empty_rows(df):
 
 
 def remove_instructions_row(df):
-    if df.iloc[0].str.contains('שדה חובה!!').any() or df.iloc[0].str.contains('שדה חובה').any():
+    if (
+        df.iloc[0].str.contains("שדה חובה!!").any()
+        or df.iloc[0].str.contains("שדה חובה").any()
+    ):
         # remove instruction line
-        return df.loc[1:, ]
+        return df.loc[
+            1:,
+        ]
     else:
         return df
 
 
 def fill_missing_cataloging_date(df):
     logger = logging.getLogger(__name__)
-    if 'DATE_CATALOGING' in list(df.columns):
-        col = 'DATE_CATALOGING'
-    elif 'תאריך הרישום' in list(df.columns):
-        col = 'תאריך הרישום'
+    if "DATE_CATALOGING" in list(df.columns):
+        col = "DATE_CATALOGING"
+    elif "תאריך הרישום" in list(df.columns):
+        col = "תאריך הרישום"
     else:
-        sys.stderr.write("There is no column for cataloging date in table, please check!")
+        sys.stderr.write(
+            "There is no column for cataloging date in table, please check!"
+        )
         sys.exit()
     print(f"max date in {col} is: {pd.to_datetime(df[col], errors='coerce').max()}")
-    latest_date = pd.to_datetime(df[col], errors='coerce').max()
+    latest_date = pd.to_datetime(df[col], errors="coerce").max()
 
-    if df[col].isna().sum()>0:
-        logger.info(f'[CATALOGING_DATE] Filling missing cataloging date values with calculated max cataloging date')
+    df = df.replace(r"^\s*$", np.nan, regex=True)
+
+    if df[col].isna().sum() > 0:
+        logger.info(
+            f"[CATALOGING_DATE] Filling missing cataloging date values with calculated max cataloging date"
+        )
         df[col].fillna(latest_date, inplace=True)
-    return df
+    return df.replace(np.nan, "")
 
 
 def clean_catalog(df):
@@ -190,8 +229,8 @@ def clean_catalog(df):
         :return: the cleanup dataframe
 
     """
-    df = df.rename(columns={'סימול/מספר מזהה': 'סימול', 'סימול פרויקט': 'סימול'})
-    df = df.fillna('')
+    df = df.rename(columns={"סימול/מספר מזהה": "סימול", "סימול פרויקט": "סימול"})
+    df = df.fillna("")
     df = remove_instructions_row(df)
     df = remove_unnamed_cols(df)
     df = remove_trailing_zero(df)
@@ -202,7 +241,7 @@ def clean_catalog(df):
 def strip_column_named(cols_names):
     new_columns_names = []
     for col in cols_names:
-        col = ''.join(e.strip().lower() for e in str(col) if e.isalnum())
+        col = "".join(e.strip().lower() for e in str(col) if e.isalnum())
         new_columns_names.append(col)
     return new_columns_names
 
@@ -210,16 +249,21 @@ def strip_column_named(cols_names):
 def map_field_names_to_english(col_names):
     # replace the field name according to the generic field mapper
     new_col_names = map(field_mapper.get, col_names)
-    new_col_names = [x.upper() for x in new_col_names]
+    try:
+        new_col_names = [x.upper() for x in new_col_names]
+    except:
+        sys.exit()
     return new_col_names
 
 
 class Collection:
-    _project_branches = ['Architect', 'Dance', 'Design', 'Theater']
-    _catalog_sheets = {'df_catalog': 'קטלוג',
-                       'df_collection': 'אוסף',
-                       'df_personalities': 'אישים',
-                       'df_corporation': 'מוסדות'}
+    _project_branches = ["Architect", "Dance", "Design", "Theater"]
+    _catalog_sheets = {
+        "df_catalog": "קטלוג",
+        "df_collection": "אוסף",
+        "df_personalities": "אישים",
+        "df_corporation": "מוסדות",
+    }
 
     @classmethod
     def branches(cls):
@@ -233,7 +277,7 @@ class Collection:
         :param sheet:
         :return:
         """
-        assert (sheet.strip() in xl.sheet_names), f'sheet {sheet} does not exist in file.'
+        assert sheet.strip() in xl.sheet_names, f"sheet {sheet} does not exist in file."
         return xl.parse(sheet.strip())
 
     def make_catalog_copy(self):
@@ -241,14 +285,14 @@ class Collection:
             creates a safe copy of the original xlsx file ("PRE_FINAL.xlsx"), and adds 'safe_copy' suffix to the file.
         :return:  path to new file, or none if it already exists.
         """
-        print('self.data_path_raw:', self.data_path_raw)
+        print("self.data_path_raw:", self.data_path_raw)
         for file in os.listdir(self.data_path_raw):
             filename = os.fsdecode(file)
 
-            if 'PRE_FINAL' in filename:  # this tests for substrings
+            if "PRE_FINAL" in filename:  # this tests for substrings
                 file_path = os.path.join(self.data_path_raw, filename)
-                print('NEW COPY', filename)
-                new_file = file_path.replace('.xlsx', '_save_copy.xlsx')
+                print("NEW COPY", filename)
+                new_file = file_path.replace(".xlsx", "_save_copy.xlsx")
                 try:
                     copyfile(file_path, new_file)
                 except shutil.SameFileError:
@@ -266,9 +310,13 @@ class Collection:
         :return: the modified dataframe with the new column headers
         """
         logger = logging.getLogger(__name__)
-        logger.info("[HEADERS] strip column names from special characters and whitespaces.")
+        logger.info(
+            "[HEADERS] strip column names from special characters and whitespaces."
+        )
         df.columns = strip_column_named(list(df.columns))
-        logger.info(f'[HEADERS] Changing Hebrew column names into English - according to field_mapper.')
+        logger.info(
+            f"[HEADERS] Changing Hebrew column names into English - according to field_mapper."
+        )
         df.columns = map_field_names_to_english(list(df.columns))
         df = remove_unnamed_cols(df)
         return df
@@ -282,18 +330,30 @@ class Collection:
         """
         # turn index to string
         self.df_collection.index = self.df_collection.index.map(str)
-        df_catalog = self.replace_table_column_names(remove_unnamed_cols(self.df_catalog))
-        df_collection = self.replace_table_column_names(remove_unnamed_cols(self.df_collection))
-        df_collection = columns.drop_col_if_exists(df_collection, 'מספרמערכתבאלף')
+        df_catalog = self.replace_table_column_names(
+            remove_unnamed_cols(self.df_catalog)
+        )
+        df_collection = self.replace_table_column_names(
+            remove_unnamed_cols(self.df_collection)
+        )
+        df_collection = columns.drop_col_if_exists(df_collection, "מספרמערכתבאלף")
 
-        print('df_catalog columns:', '\n'.join([f'{i}: {x}' for i, x in enumerate(list(df_catalog.columns))]))
-        print('df_collection columns:', '\n'.join([f'{i}: {x}' for i, x in enumerate(list(df_collection.columns))]))
+        print(
+            "df_catalog columns:",
+            "\n".join([f"{i}: {x}" for i, x in enumerate(list(df_catalog.columns))]),
+        )
+        print(
+            "df_collection columns:",
+            "\n".join([f"{i}: {x}" for i, x in enumerate(list(df_collection.columns))]),
+        )
 
         combined_catalog = pd.concat([df_collection, df_catalog], axis=0, sort=True)
 
-        assert combined_catalog is not None, 'the Collection and Catalog dataframes could not be combined'
+        assert (
+            combined_catalog is not None
+        ), "the Collection and Catalog dataframes could not be combined"
         combined_catalog = remove_unnamed_cols(combined_catalog)
-        combined_catalog = combined_catalog.set_index('UNITID')
+        combined_catalog = combined_catalog.set_index("UNITID")
         combined_catalog.index = combined_catalog.index.map(str)
 
         return combined_catalog
@@ -312,14 +372,22 @@ class Collection:
             cms, branch, collection_id, BASE_PATH of the directory, google sheet file name of the used collection sheet,
             and the google sheet file id of the used collection google spreadsheet.
         """
-        catalog_metadata_fields = ['cms', 'branch', 'collection_id', 'BASE_PATH',
-                                   'google_sheet_file_name', 'google_sheet_file_id']
+        catalog_metadata_fields = [
+            "cms",
+            "branch",
+            "collection_id",
+            "BASE_PATH",
+            "google_sheet_file_name",
+            "google_sheet_file_id",
+        ]
 
-        catalog_metadata_dict = {key: str(self.__dict__[key]) for key in catalog_metadata_fields}
+        catalog_metadata_dict = {
+            key: str(self.__dict__[key]) for key in catalog_metadata_fields
+        }
 
         file_path = self.data_path_reports / (self.collection_id + "_metadata.conf")
 
-        with open(file_path, encoding='utf8', mode='w') as f:
+        with open(file_path, encoding="utf8", mode="w") as f:
             f.write(json.dumps(catalog_metadata_dict, indent=4))
 
     def fetch_data(self) -> dict:
@@ -335,10 +403,10 @@ class Collection:
             :param df:
             :return:
             """
-            df = df.replace('', np.nan)
-            df = df.dropna(how='all')
-            if 'סימול פרויקט' in list(df.columns):
-                df = df.dropna(subset=['סימול פרויקט'])
+            df = df.replace("", np.nan)
+            df = df.dropna(how="all")
+            if "סימול פרויקט" in list(df.columns):
+                df = df.dropna(subset=["סימול פרויקט"])
 
             if df.index.name is not None:
                 print(df.index.name)
@@ -353,9 +421,14 @@ class Collection:
             :param df:
             :return:
             """
-            if df.iloc[0].str.contains('שדה חובה!!').any() or df.iloc[0].str.contains('שדה חובה').any():
+            if (
+                df.iloc[0].str.contains("שדה חובה!!").any()
+                or df.iloc[0].str.contains("שדה חובה").any()
+            ):
                 # remove instruction line
-                return df.loc[1:, ]
+                return df.loc[
+                    1:,
+                ]
             else:
                 return df
 
@@ -366,21 +439,25 @@ class Collection:
             :param branch:
             :return:
             """
-            works_sheets = [x for x in xl_file.sheet_names if 'יצירות' in x]
-            if 'יצירות' in works_sheets and len(works_sheets) == 1:
-                return 'יצירות'
-            if 'Dance' in branch:
-                assert ('יצירות - מחול' in xl_file.sheet_names), ' sheet יצירות - מחול does not exist in file.'
-                return 'יצירות - מחול'
-            elif 'Architect' in branch:
-                if 'יצירות - אדריכלות' in xl_file.sheet_names:
-                    return 'יצירות - אדריכלות'
-            elif 'Theater' in branch:
-                assert ('יצירות - תאטרון' in xl_file.sheet_names), ' sheet יצירות - תאטרון does not exist in file.'
-                return 'יצירות - תאטרון'
+            works_sheets = [x for x in xl_file.sheet_names if "יצירות" in x]
+            if "יצירות" in works_sheets and len(works_sheets) == 1:
+                return "יצירות"
+            if "Dance" in branch:
+                assert (
+                    "יצירות - מחול" in xl_file.sheet_names
+                ), " sheet יצירות - מחול does not exist in file."
+                return "יצירות - מחול"
+            elif "Architect" in branch:
+                if "יצירות - אדריכלות" in xl_file.sheet_names:
+                    return "יצירות - אדריכלות"
+            elif "Theater" in branch:
+                assert (
+                    "יצירות - תאטרון" in xl_file.sheet_names
+                ), " sheet יצירות - תאטרון does not exist in file."
+                return "יצירות - תאטרון"
 
             else:
-                return ''
+                return ""
 
         copy = self.make_catalog_copy()
         if copy is None:
@@ -395,14 +472,18 @@ class Collection:
 
             for table, sheet in Collection.catalog_sheets().items():
                 original_sheet = self.get_sheet(xl, sheet)
-                catalog_dfs[sheet] = remove_empty_rows(remove_instructions_row(original_sheet))
+                catalog_dfs[sheet] = remove_empty_rows(
+                    remove_instructions_row(original_sheet)
+                )
             # add WORKS sheet to dfs if there is one
             try:
-                catalog_dfs['יצירות'] = remove_empty_rows(xl.parse(get_works_sheet(xl, self.branch)))
+                catalog_dfs["יצירות"] = remove_empty_rows(
+                    xl.parse(get_works_sheet(xl, self.branch))
+                )
             except:
                 pass
         try:
-            catalog_dfs['קטלוג סופי'] = remove_empty_rows(xl.parse('קטלוג סופי'))
+            catalog_dfs["קטלוג סופי"] = remove_empty_rows(xl.parse("קטלוג סופי"))
 
         except:
             pass
@@ -418,10 +499,11 @@ class Collection:
             dataframe2export = self.full_catalog
         elif stage == "POST":
             dataframe2export = self.df_final_data
-        dt_now_temp = datetime.now().strftime('%Y%m%d')
-        preprocess_filename = self.data_path_raw / (self.collection_id + "_" + dt_now_temp +
-                                                          '_preprocessing_test.xlsx')
-        write_excel(dataframe2export, preprocess_filename, 'Catalog')
+        dt_now_temp = datetime.now().strftime("%Y%m%d")
+        preprocess_filename = self.data_path_raw / (
+            self.collection_id + "_" + dt_now_temp + "_preprocessing_test.xlsx"
+        )
+        write_excel(dataframe2export, preprocess_filename, "Catalog")
 
     def __init__(self, CMS: str, branch: str, collection_id: str):
         """
@@ -434,64 +516,114 @@ class Collection:
         self.cms = CMS
         self.branch = branch
         self.collection_id = collection_id
-        self.dt_now = datetime.now().strftime('%Y%m%d')
+        self.dt_now = datetime.now().strftime("%Y%m%d")
 
         # create directory and sub-folders for collection
-        self.BASE_PATH = Path('C:/Users/Yaelg/Google Drive/National_Library/Python') / ('VC-' + branch) / collection_id
-
+        self.BASE_PATH = (
+            Path("C:/Users/Yaelg/Google Drive/National_Library/Python")
+            / ("VC-" + branch)
+            / collection_id
+        )
 
         # initialize directory with all folder and sub-folders for the collection
-        self.data_path, self.data_path_raw, self.data_path_processed, \
-        self.data_path_reports, self.copyright_path, self.digitization_path, \
-        self.authorities_path, self.aleph_custom21_path, self.aleph_manage18_path, \
-        self.aleph_custom04_path = create_directory(CMS, self.BASE_PATH)
+        (
+            self.data_path,
+            self.data_path_raw,
+            self.data_path_processed,
+            self.data_path_reports,
+            self.copyright_path,
+            self.digitization_path,
+            self.authorities_path,
+            self.aleph_custom21_path,
+            self.aleph_manage18_path,
+            self.aleph_custom04_path,
+        ) = create_directory(CMS, self.BASE_PATH)
 
-        print(self.data_path, '\n', self.data_path_raw, '\n', self.data_path_processed, '\n',
-              self.data_path_reports, '\n', self.copyright_path, '\n', self.digitization_path, '\n',
-              self.authorities_path, '\n', self.aleph_custom21_path, '\n', self.aleph_manage18_path, '\n',
-              self.aleph_custom04_path)
+        print(
+            self.data_path,
+            "\n",
+            self.data_path_raw,
+            "\n",
+            self.data_path_processed,
+            "\n",
+            self.data_path_reports,
+            "\n",
+            self.copyright_path,
+            "\n",
+            self.digitization_path,
+            "\n",
+            self.authorities_path,
+            "\n",
+            self.aleph_custom21_path,
+            "\n",
+            self.aleph_manage18_path,
+            "\n",
+            self.aleph_custom04_path,
+        )
 
         # set up logger for collection instance
         # initialize_logger(self.branch, self.collection_id)
         # self.logger = logging.getLogger(__name__)
         logger = logging.getLogger(__name__)
 
-        client, self.google_sheet_file_id, self.google_sheet_file_name = find_catalog_gspread(connect_to_google_drive(), self.collection_id)
+        (
+            client,
+            self.google_sheet_file_id,
+            self.google_sheet_file_name,
+        ) = find_catalog_gspread(connect_to_google_drive(), self.collection_id)
 
         # self.logger.info("Creating ")
         logger.info("Creating ")
 
         self.dfs = create_xl_from_gspread(client, self.google_sheet_file_id)
 
-
-
         self.catalog_dfs = self.fetch_data()
         if len(self.catalog_dfs) == 0:
             pass
         else:
-            export_entire_catalog(self, self.catalog_dfs, stage='PRE_FINAL')
+            export_entire_catalog(self, self.catalog_dfs, stage="PRE_FINAL")
 
-        self.df_catalog = remove_instructions_row(remove_empty_rows(self.dfs['קטלוג']))
-        self.df_collection = remove_instructions_row(remove_empty_rows(self.dfs['אוסף']))
-        self.df_personalities = remove_instructions_row(remove_empty_rows(self.dfs['אישים']))
-        self.df_corporation = remove_instructions_row(remove_empty_rows(self.dfs['מוסדות']))
+        self.df_catalog = remove_instructions_row(remove_empty_rows(self.dfs["קטלוג"]))
+        self.df_collection = remove_instructions_row(
+            remove_empty_rows(self.dfs["אוסף"])
+        )
+        self.df_personalities = remove_instructions_row(
+            remove_empty_rows(self.dfs["אישים"])
+        )
+        self.df_corporation = remove_instructions_row(
+            remove_empty_rows(self.dfs["מוסדות"])
+        )
 
-        work_col = [x for x in self.dfs.keys() if 'יצירות' in x][0]
+        work_col = [x for x in self.dfs.keys() if "יצירות" in x][0]
         self.df_works = self.dfs[work_col]
 
         self.full_catalog = self.make_one_table(self)
 
-        self.all_tables = [type(getattr(self, name)).__name__ for name in dir(self) if name[:2] != '__' and name[-2:] != '__']
+        self.all_tables = [
+            type(getattr(self, name)).__name__
+            for name in dir(self)
+            if name[:2] != "__" and name[-2:] != "__"
+        ]
 
-        if 'קטלוג סופי' in self.dfs.keys():
-            self.df_final_data = remove_unnamed_cols(self.dfs['קטלוג סופי'].rename(columns=
-                                                                        {'Unnamed: 1': 'סימול', '': 'סימול'}))
-            print('\n'.join([f"{i} :{col}" for col, i in enumerate(self.dfs['קטלוג סופי'].columns)]))
+        if "קטלוג סופי" in self.dfs.keys():
+            self.df_final_data = remove_unnamed_cols(
+                self.dfs["קטלוג סופי"].rename(
+                    columns={"Unnamed: 1": "סימול", "": "סימול"}
+                )
+            )
+            print(
+                "\n".join(
+                    [
+                        f"{i} :{col}"
+                        for col, i in enumerate(self.dfs["קטלוג סופי"].columns)
+                    ]
+                )
+            )
             # print(f'column of קטלוג סופי are: {[index, col for (index, col) in enumrate(self.dfs.columns)]}'
 
         # turn headers to English
-        logger.info(f'Creating Excel: Saving file ')
-        export_entire_catalog(self, self.dfs, stage='PRE1_FINAL')
+        logger.info(f"Creating Excel: Saving file ")
+        export_entire_catalog(self, self.dfs, stage="PRE1_FINAL")
         self.create_catalog_metadata_file()
 
     def create_MARC_XML(self):
@@ -499,9 +631,19 @@ class Collection:
         Creates a MARC XML format file from the given dataframe
         :return:
         """
-        df = self.df_final_data
-        output_file = self.data_path_processed / (self.collection_id + '_final_' + self.dt_now + ".xml")
-        writer = XMLWriter(open(output_file, 'wb'))
+        df = self.marc_data
+        #  MARCXML file
+        output_file = self.data_path_processed / (
+            self.collection_id + "_final_" + self.dt_now + ".xml"
+        )
+        writer = XMLWriter(open(output_file, "wb"))
+
+        # MarcEdit MRK file
+        output_file_mrk = self.data_path_processed / (
+            self.collection_id + "_finalMRK_" + self.dt_now + ".txt"
+        )
+        mrk_file = open(output_file_mrk, "w", encoding="utf8")
+
         start_time = time.time()
         counter = 1
 
@@ -509,62 +651,53 @@ class Collection:
 
             record = Record()
 
-            if df.index.dtype == 'float64':
-                ident = "00{}".format(str(index)[:-2])
-            elif df.index.dtype == 'int64':
-                ident = "00{}".format(str(index))
-                # print('original:', index, '001:', ident)
-            else:
-                ident = str(index)
-
             # add control field
-            record.add_field(
-                Field(
-                    tag='001',
-                    data=ident))
+            record.add_field(Field(tag="001", data=str(index)))
 
             for col in df:
                 # if field is empty, skip
-                if str(row[col]) == '':
+                if str(row[col]) == "":
                     continue
                 # leader
-                elif col == 'LDR':
+                elif col == "LDR":
                     l = list(record.leader)
-                    l[0:5] = '0000'
-                    l[5] = 'n'
-                    l[6] = 'p'
-                    if row['351'] == 'File Record' or 'Item Record':
-                        l[7] = 'c'
+                    l[0:5] = "0000"
+                    l[5] = "n"
+                    l[6] = "p"
+                    if row["351"] == "File Record" or "Item Record":
+                        l[7] = "c"
                     else:
-                        l[7] = 'd'
-                    l[9] = 'a'  # flag saying this record is utf8
+                        l[7] = "d"
+                    l[9] = "a"  # flag saying this record is utf8
                     record.leader = "".join(l)
                     continue
 
                 # 008
-                elif col == '008':
-                    field = Field(tag='008', data=row[col])
+                elif col == "008":
+                    field = Field(tag="008", data=row[col])
+                    record.add_field(field)
+                    continue
 
                 # extract field name
                 field = col[:3]
 
                 # extract indicators
-                if col.find('_') == -1 and len(col) < 5:
-                    ind = [' ', ' ']
-                elif col.find('_') == 3:
-                    ind = [' ', ' ']
-                elif col.find('_') == 4:
-                    ind = [col[3], ' ']
-                elif col.find('_') == 5:
-                    ind = [' ', col[4]]
+                if col.find("_") == -1 and len(col) < 5:
+                    ind = [" ", " "]
+                elif col.find("_") == 3:
+                    ind = [" ", " "]
+                elif col.find("_") == 4:
+                    ind = [col[3], " "]
+                elif col.find("_") == 5:
+                    ind = [" ", col[4]]
                 else:
                     ind = [col[3], col[4]]
 
                 # extract sub-fields
                 subfields_data = list()
-                subfields_prep = list(filter(None, str(row[col]).split('$$')))
+                subfields_prep = list(filter(None, str(row[col]).split("$$")))
                 for subfield in subfields_prep:
-                    if subfield == '':
+                    if subfield == "":
                         continue
                     subfields_data.append(subfield[0])
                     subfields_data.append(subfield[1:])
@@ -577,14 +710,14 @@ class Collection:
                 # # print('subfields:', subfields_data)
 
                 record.add_field(
-                    Field(
-                        tag=field,
-                        indicators=ind,
-                        subfields=subfields_data))
+                    Field(tag=field, indicators=ind, subfields=subfields_data)
+                )
 
             counter += 1
+            # mrk_file.write(record.as_marc())
             writer.write(record)
         writer.close()
+        mrk_file.close()
         run_time = time.time() - start_time
 
         return counter, run_time
@@ -594,38 +727,38 @@ class Collection:
         function to transform a MARC formatted Dataframe into a MARC sequantial file
 
         """
-        df = self.full_catalog
+        df = self.marc_data
         ad = AlphabetDetector()
-        output_file_name = self.data_path_processed / (self.collection_id + '_final_' + self.dt_now + '.txt')
+        output_file_name = self.data_path_processed / (
+            self.collection_id + "_final_" + self.dt_now + ".txt"
+        )
 
-        with open(output_file_name, 'w', encoding="utf8") as f:
+        with open(output_file_name, "w", encoding="utf8") as f:
             for index, row in df.iterrows():
-                if df.index.dtype == 'float64':
-                    ident = "00{}".format(str(index)[:-2])
-                elif df.index.dtype == 'int64':
-                    ident = "00{}".format(str(index))
 
-                f.write("{} {} {} {}".format(ident, "{:<5}".format('001'), 'L', ident) + '\n')
+                f.write(f"{index} 001 L {index}\n")
                 for col in df:
                     # if field is empty, skip
-                    if str(row[col]) == '':
+                    if str(row[col]) == "":
                         continue
 
                     # check language
                     lang = ad.detect_alphabet(str(row[col]))
-                    if 'HEBREW' in lang:
-                        lang = 'H'
+                    if "HEBREW" in lang:
+                        lang = "H"
                     else:
-                        lang = 'L'
+                        lang = "L"
 
                     # construct 5 character field code
-                    if '_' in col:
-                        col_name = "{:<5}".format(col[:col.find('_')])
+                    if "_" in col:
+                        col_name = "{:<5}".format(col[: col.find("_")])
                     else:
                         col_name = "{:<5}".format(col)
 
                     # construct the line for the MARC sequantial file
-                    line = "{} {} {} {}".format(ident, col_name, lang, str(row[col]) + '\n')
+                    line = "{} {} {} {}".format(
+                        index, col_name, lang, str(row[col]) + "\n"
+                    )
 
                     # write to file
                     f.write(line)
@@ -651,20 +784,22 @@ class Collection:
     #         try:
     #             r
 
-        # writer.close()
+    # writer.close()
 
     def set_branch(self):
         while True:
-            branch = input("Please enter the name of the Branch (Architect, Design, Dance, Theater): ")
+            branch = input(
+                "Please enter the name of the Branch (Architect, Design, Dance, Theater): "
+            )
             branch = str(branch)
             if branch[0].islower():
                 branch = branch.capitalize()
             if branch not in Collection._project_branches:
-                print('need to choose one of: Architect, Design, Dance, Theater')
+                print("need to choose one of: Architect, Design, Dance, Theater")
                 continue
             else:
                 # we're happy with the value given.
-                branch = 'VC-' + branch
+                branch = "VC-" + branch
                 break
 
         self.branch = branch
@@ -682,7 +817,7 @@ class Collection:
     def set_cms(self):
         while True:
             CMS = input("please enter the name of the target CMS (Aleph, Alma):")
-            if not CMS or CMS.capitalize() not in ['Aleph', 'Alma']:
+            if not CMS or CMS.capitalize() not in ["Aleph", "Alma"]:
                 print("Please enter the name of the target CMS (Aleph, Alma).")
             else:
                 # we're happy with the value given.
@@ -691,7 +826,7 @@ class Collection:
 
 
 def write_log(text, log_file):
-    f = open(log_file, 'a')  # 'a' will append to an existing file if it exists
-    log_line = '[' + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '] {}'.format(text)
+    f = open(log_file, "a")  # 'a' will append to an existing file if it exists
+    log_line = "[" + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + "] {}".format(text)
     f.write("{}\n".format(text))  # write the text to the logfile and move to next line
     return

@@ -173,6 +173,9 @@ class Authority:
         df_credits, credits_col = create_df_from_gs(spreadsheet, 'קרדיטים')
         df_credits = df_credits.set_index('סימול האוסף')
 
+        df_copyright_values, copyright_cols = create_df_from_gs(spreadsheet, 'מגבלות פרטיות')
+        df_copyright_values = df_copyright_values.set_index('מגבלות פרטיות')
+
         df_level, level_cols = create_df_from_gs(spreadsheet, 'רמת תיאור')
 
         self.df_media_format_auth, self.media_format_mapping_dict = order_media_format(df_media_format_auth)
@@ -185,10 +188,10 @@ class Authority:
         self.cataloger_name_mapper = cataloger_name_mapper
         self.df_countries = df_countries
         self.df_languages = df_languages
-
         self.roles_dict = roles_dict
         self.df_level = df_level
         self.df_credits = order_credits(df_credits)
+        self.df_copyright_values = df_copyright_values
 
 
 

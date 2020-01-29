@@ -2,7 +2,6 @@ import difflib
 import logging
 import os
 import pprint
-import re
 from collections import defaultdict
 
 import pandas as pd
@@ -463,8 +462,6 @@ def clean_creators(collection: Collection) -> Collection:
     correct_relators(collection, authority_role_list, roles, role_not_found, temp_role_dict)
 
     df['COMBINED_CREATORS'] = df['COMBINED_CREATORS'].str.replace(";;", ";")
-
-
     collection.full_catalog = df
 
     return collection
@@ -523,7 +520,7 @@ def fix_values_in_column(col, err, new_val):
             col = col.apply(lambda x: x.split(';'))
             try:
 
-                fixed_col = col.apply(lambda line: [re.sub(r'^' + err + r'$', new_val, val.strip()) for val in line])
+                fixed_col = col.apply(lambda line: [val.replace(err, new_val) for val in line])
             except:
                 print(f"Bad error value: [{err}], please correct in original data, and run again.")
 
