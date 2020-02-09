@@ -5,7 +5,7 @@ import pprint
 import numpy as np
 import pandas as pd
 
-from VC_collections.fieldmapper import *
+from VC_collections.fieldmapper import field_types_dict
 
 
 def column_exists(df, col):
@@ -35,14 +35,20 @@ def remove_duplicate_in_column(df, col):
     for index, frame in df[col].iteritems():
 
         # if there is a list of values delimited by ;
-        if ';' in str(frame):
-            old_values_list = frame.split(';')
+        if ";" in str(frame):
+            old_values_list = frame.split(";")
             # check if there are duplicate values
             #             print('len old:', len(old_values_list), 'len new:',len(set(old_values_list)))
             if len(old_values_list) > len(set(old_values_list)):
 
                 print("There are duplicates in column {}, index {}".format(col, index))
-                pprint.pprint([item for item, count in collections.Counter(old_values_list).items() if count > 1])
+                pprint.pprint(
+                    [
+                        item
+                        for item, count in collections.Counter(old_values_list).items()
+                        if count > 1
+                    ]
+                )
                 new_values_list = ";".join(list(set(old_values_list)))
 
             else:
@@ -78,7 +84,7 @@ def is_column_empty(df, col):
     :param col: the column name to check if empty
     :return: true if the column is empty, false if otherwise
     """
-    s_temp = df[col].replace('', np.nan)
+    s_temp = df[col].replace("", np.nan)
     return s_temp.isnull().all()
 
 
@@ -113,13 +119,13 @@ def clean_text_cols(df, col):
     df[col] = df[col].str.rstrip(",")
 
     df[col] = df[col].str.replace("''", '"')
-    df[col] = df[col].str.lstrip(',')
-    df[col] = df[col].str.lstrip(':')
+    df[col] = df[col].str.lstrip(",")
+    df[col] = df[col].str.lstrip(":")
 
     # remove leading white space
     df[col] = df[col].str.lstrip()
 
-    df[col] = df[col].str.strip('\n')
+    df[col] = df[col].str.strip("\n")
 
     return df
 
@@ -147,7 +153,7 @@ def rstrip_semicolon(df, col):
     :return: the clean dataframe
     """
     df[col] = df[col].apply(str)
-    df[col] = df[col].str.rstrip(';')
+    df[col] = df[col].str.rstrip(";")
     return df
 
 
@@ -161,6 +167,7 @@ def strip_whitespace_af_semicolon(df, col):
     """
     df[col] = df[col].apply(str)
     from VC_collections.value import semiColonStriper
+
     df[col] = df[col].apply(semiColonStriper)
     df[col] = df[col].str.replace("; ", ";")
     return df
@@ -168,61 +175,86 @@ def strip_whitespace_af_semicolon(df, col):
 
 def remove_line_breaks(df):
     # replace all line breaks
-    df = df.replace('\n', ' ', regex=True)
-    df = df.replace(',,', ',', regex=False)
-    df = df.replace(', ,', ', ', regex=False)
+    df = df.replace("\n", " ", regex=True)
+    df = df.replace(",,", ",", regex=False)
+    df = df.replace(", ,", ", ", regex=False)
     return df
 
 
 def replace_NaN(df):
-    df = df.replace(np.nan, '', regex=True)
+    df = df.replace(np.nan, "", regex=True)
     return df
 
 
 def clean_tables(collection):
     # replace all NaN values with empty string
     logger = logging.getLogger(__name__)
-    logger.info(f'Replacing all NaN values with empty string in {collection.collection_id} Catalog records,'
-                           f'applying {replace_NaN.__name__} function.')
+    logger.info(
+        f"Replacing all NaN values with empty string in {collection.collection_id} Catalog records,"
+        f"applying {replace_NaN.__name__} function."
+    )
     collection.df_catalog = replace_NaN(collection.df_catalog)
-    logger.info(f'Replacing all NaN values with empty string in {collection.collection_id}, Collection'
-                           f' record, applying {replace_NaN.__name__} function.')
+    logger.info(
+        f"Replacing all NaN values with empty string in {collection.collection_id}, Collection"
+        f" record, applying {replace_NaN.__name__} function."
+    )
     collection.df_collection = replace_NaN(collection.df_collection)
 
     # remove line breaks
-    logger.info(f'Replacing all line breaks in {collection.collection_id}, Catalog records,'
-                           f'applying {remove_line_breaks.__name__} function.')
+    logger.info(
+        f"Replacing all line breaks in {collection.collection_id}, Catalog records,"
+        f"applying {remove_line_breaks.__name__} function."
+    )
     collection.df_catalog = remove_line_breaks(collection.df_catalog)
-    logger.info(f'Replacing all line breaks in {collection.collection_id}, Collection record,'
-                           f'applying {remove_line_breaks.__name__} function.')
+    logger.info(
+        f"Replacing all line breaks in {collection.collection_id}, Collection record,"
+        f"applying {remove_line_breaks.__name__} function."
+    )
     collection.df_collection = remove_line_breaks(collection.df_collection)
-
 
     # clean text columns
 
-    for field in field_types_dict['text']:
-        logger.info(f'[{field}] Cleaning {field} column - Removing whitespaces (applying  {clean_text_cols.__name__}) ')
-        if column_exists(collection.df_collection, field) and not is_column_empty(collection.df_collection, field):
+    for field in field_types_dict["text"]:
+        logger.info(
+            f"[{field}] Cleaning {field} column - Removing whitespaces (applying  {clean_text_cols.__name__}) "
+        )
+        if column_exists(collection.df_collection, field) and not is_column_empty(
+            collection.df_collection, field
+        ):
             collection.df_collection = clean_text_cols(collection.df_collection, field)
-        if column_exists(collection.df_catalog, field) and not is_column_empty(collection.df_catalog, field):
+        if column_exists(collection.df_catalog, field) and not is_column_empty(
+            collection.df_catalog, field
+        ):
             collection.df_catalog = clean_text_cols(collection.df_catalog, field)
 
     # clean values columns - rstrip_semicolon, strip_whitespace_af_semicolon
-    for field in field_types_dict['value_list']:
+    for field in field_types_dict["value_list"]:
         logger.info(
-            f'[{field}] Cleaning {field} column - Removing whitespaces (applying  {rstrip_semicolon.__name__} ')
-        if column_exists(collection.df_collection, field) and not is_column_empty(collection.df_collection, field):
+            f"[{field}] Cleaning {field} column - Removing whitespaces (applying  {rstrip_semicolon.__name__} "
+        )
+        if column_exists(collection.df_collection, field) and not is_column_empty(
+            collection.df_collection, field
+        ):
             collection.df_collection = rstrip_semicolon(collection.df_collection, field)
-        if column_exists(collection.df_catalog, field) and not is_column_empty(collection.df_catalog, field):
+        if column_exists(collection.df_catalog, field) and not is_column_empty(
+            collection.df_catalog, field
+        ):
             collection.df_catalog = rstrip_semicolon(collection.df_catalog, field)
 
         logger.info(
-            f'[{field}] Cleaning {field} column - Removing whitespaces (applying  {strip_whitespace_af_semicolon.__name__} ')
-        if column_exists(collection.df_collection, field) and not is_column_empty(collection.df_collection, field):
-            collection.df_collection = strip_whitespace_af_semicolon(collection.df_collection, field)
-        if column_exists(collection.df_catalog, field) and not is_column_empty(collection.df_catalog, field):
-            collection.df_catalog = strip_whitespace_af_semicolon(collection.df_catalog, field)
-
+            f"[{field}] Cleaning {field} column - Removing whitespaces (applying  {strip_whitespace_af_semicolon.__name__} "
+        )
+        if column_exists(collection.df_collection, field) and not is_column_empty(
+            collection.df_collection, field
+        ):
+            collection.df_collection = strip_whitespace_af_semicolon(
+                collection.df_collection, field
+            )
+        if column_exists(collection.df_catalog, field) and not is_column_empty(
+            collection.df_catalog, field
+        ):
+            collection.df_catalog = strip_whitespace_af_semicolon(
+                collection.df_catalog, field
+            )
 
     return collection
-

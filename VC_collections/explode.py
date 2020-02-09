@@ -52,7 +52,7 @@ def splitDataFrameList(df, target_column, separator):
     return new_df
 
 
-def explode_col_to_new_df(df, col, sep=';', start=0):
+def explode_col_to_new_df(df, col, sep=";", start=0):
     """
      Explode column into new dataframe
 
@@ -62,14 +62,18 @@ def explode_col_to_new_df(df, col, sep=';', start=0):
     :param start:
     :return:
     """
-    df_explode = df[col].str.split(sep, expand=True).rename(columns=lambda x: col + f"_{start+x+1}")
+    df_explode = (
+        df[col]
+        .str.split(sep, expand=True)
+        .rename(columns=lambda x: col + f"_{start+x+1}")
+    )
     df = pd.concat([df, df_explode], axis=1)
-    df = df.fillna('')
+    df = df.fillna("")
     df = drop_col_if_exists(df, "col")
     return df
 
 
-def horizontal_explode(df_temp, col, col_name, separator=';'):
+def horizontal_explode(df_temp, col, col_name, separator=";"):
     """
     Horizontal explode + Col name
 
@@ -84,7 +88,7 @@ def horizontal_explode(df_temp, col, col_name, separator=';'):
         for i, row in df_temp.iterrows():
             count = 1
             for lang in str(row[col]).split(separator):
-                colLANGUAGE = col_name + '{}'.format(count)
+                colLANGUAGE = col_name + "{}".format(count)
                 df_temp.loc[i, colLANGUAGE] = lang.strip()
 
                 count += 1
@@ -98,13 +102,16 @@ def horizontal_explode_creators(df_temp):
     :param df_temp: the original dataframe
     :return: the exploded creators dataframe
     """
-    if "COMBINED_CREATORS_PERS" in df_temp.columns.values and "COMBINED_CREATORS_CORPS" in df_temp.columns.values:
+    if (
+        "COMBINED_CREATORS_PERS" in df_temp.columns.values
+        and "COMBINED_CREATORS_CORPS" in df_temp.columns.values
+    ):
 
         for i, row in df_temp.iterrows():
             count = 1
-            for name in str(row['COMBINED_CREATORS_PERS']).split(';'):
-                colnamePERS = 'CREATOR_PERS{}'.format(count)
-                colnamePERSROLE = 'CREATOR_PERS_ROLE{}'.format(count)
+            for name in str(row["COMBINED_CREATORS_PERS"]).split(";"):
+                colnamePERS = "CREATOR_PERS{}".format(count)
+                colnamePERSROLE = "CREATOR_PERS_ROLE{}".format(count)
 
                 df_temp.loc[i, colnamePERS] = find_name(name).strip()
                 df_temp.loc[i, colnamePERSROLE] = find_role(name).strip()
@@ -112,27 +119,27 @@ def horizontal_explode_creators(df_temp):
                 count += 1
 
             count = 1
-            for name in str(row['COMBINED_CREATORS_CORPS']).split(';'):
-                colnameCORPS = 'CREATOR_CORPS{}'.format(count)
-                colnameCORPSROLE = 'CREATOR_CORPS_ROLE{}'.format(count)
+            for name in str(row["COMBINED_CREATORS_CORPS"]).split(";"):
+                colnameCORPS = "CREATOR_CORPS{}".format(count)
+                colnameCORPSROLE = "CREATOR_CORPS_ROLE{}".format(count)
                 df_temp.loc[i, colnameCORPS] = find_name(name).strip()
                 df_temp.loc[i, colnameCORPSROLE] = find_role(name).strip()
                 count += 1
     else:
         for i, row in df_temp.iterrows():
             count = 1
-            for name in str(row['CREATOR_PERS']).split(';'):
-                colnamePERS = 'CREATOR_PERS{}'.format(count)
-                colnamePERSROLE = 'CREATOR_PERS_ROLE{}'.format(count)
+            for name in str(row["CREATOR_PERS"]).split(";"):
+                colnamePERS = "CREATOR_PERS{}".format(count)
+                colnamePERSROLE = "CREATOR_PERS_ROLE{}".format(count)
 
                 df_temp.loc[i, colnamePERS] = find_name(name)
                 df_temp.loc[i, colnamePERSROLE] = find_role(name)
 
                 count += 1
             count = 1
-            for name in str(row['CREATOR_CORP']).split(';'):
-                colnameCORPS = 'CREATOR_CORPS{}'.format(count)
-                colnameCORPSROLE = 'CREATOR_CORPS_ROLE{}'.format(count)
+            for name in str(row["CREATOR_CORP"]).split(";"):
+                colnameCORPS = "CREATOR_CORPS{}".format(count)
+                colnameCORPSROLE = "CREATOR_CORPS_ROLE{}".format(count)
                 df_temp.loc[i, colnameCORPS] = find_name(name)
                 df_temp.loc[i, colnameCORPSROLE] = find_role(name)
                 count += 1

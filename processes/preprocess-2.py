@@ -2,22 +2,16 @@ import sys
 import time
 import timeit
 
-from VC_collections import marc, project
+from VC_collections import marc
 from VC_collections.logger import initialize_logger
 
 sys.path.insert(
     1, "C:/Users/Yaelg/Google Drive/National_Library/Python/VC_Preprocessing"
 )
-from VC_collections.files import get_branch_colletionID
 from VC_collections.value import *
 
 from VC_collections.authorities import *
-from VC_collections.Collection import Collection
-
-
-def retrieve_collection():
-    CMS, branch, collection_id = get_branch_colletionID()
-    return Collection(CMS, branch, collection_id)
+from VC_collections.Collection import retrieve_collection
 
 
 def is_collection_postprocess1(collection):
@@ -55,18 +49,20 @@ def main():
 
     # create MARC 911 and 093 field for Call Number (סימול פרויקט)
     logger.info("[911/093] Creating 911/093 MARC field for Call Number")
+    df = collection.df_final_data.T.drop_duplicates().T
+    df.rename(columns={df.columns[0]: "mms_id"}, inplace=True)
     collection.df_final_data = marc.create_MARC_911(collection.df_final_data)
     collection.df_final_data.index = collection.df_final_data["911_1"].apply(
         lambda x: x[x.find("$$a") + 3 : x.find("$$c")]
     )
 
     # Add MMS id to catalog (מספר מערכת עלמא)
-    logger.info("[001] Add MMS id to catalog")
-    collection.df_final_data, df_alma = project.get_alma_sid(
-        collection.aleph_custom04_path,
-        collection.collection_id,
-        collection.df_final_data,
-    )
+    # logger.info("[001] Add MMS id to catalog")
+    # collection.df_final_data, df_alma = project.get_alma_sid(
+    #     collection.aleph_custom04_path,
+    #     collection.collection_id,
+    #     collection.df_final_data,
+    # )
 
     # create 008
     logger.info(f"[008] Creating initial MARC 008 field")
@@ -181,6 +177,10 @@ def main():
     # create MARC 590
     logger.info("[MARC 590] Creating MARC RDA 590 ")
     collection.df_final_data = marc.create_MARC_590(collection.df_final_data)
+
+    # create MARC 561
+    logger.info("[MARC 590] Creating MARC RDA 561 ")
+    collection.df_final_data = marc.create_MARC_561(collection.df_final_data)
 
     collection.temp_preprocess_file(stage="POST")
 

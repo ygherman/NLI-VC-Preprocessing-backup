@@ -7,7 +7,7 @@ def main():
     file_help_msg = "Name of the file you want to process"
     parser = GooeyParser(description="My Cool GUI Program!")
     parser.add_argument("FileChooser", help=file_help_msg, widget="FileChooser")
-    parser.add_argument('Date', widget="DateChooser")
+    parser.add_argument("Date", widget="DateChooser")
 
     args = parser.parse_args()
 
@@ -16,7 +16,7 @@ def here_is_more():
     pass
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
 
 # from gooey.python_bindings.gooey_decorator import Gooey

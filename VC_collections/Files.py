@@ -13,6 +13,7 @@ def get_google_drive_api_path(path):
         if x.is_dir() and x != path:
             yield x
 
+
 def make_sure_path_exists(path):
     """
     Make sure Path exists. raises an exception if path doesn't exist
@@ -37,52 +38,61 @@ def create_directory(CMS, BASE_PATH):
     """
     # create a Data Folder
 
-    print('BASE_PATH', BASE_PATH)
-    data_path = BASE_PATH / 'Data'
+    print("BASE_PATH", BASE_PATH)
+    data_path = BASE_PATH / "Data"
     make_sure_path_exists(data_path)
 
     # create a Data Folder
-    data_path_raw = data_path / 'raw'
+    data_path_raw = data_path / "raw"
     make_sure_path_exists(data_path_raw)
 
     # create a Data Folder
-    data_path_processed = data_path / 'processed'
+    data_path_processed = data_path / "processed"
     make_sure_path_exists(data_path_processed)
 
     # create a Data Folder
-    data_path_reports = data_path / 'reports'
+    data_path_reports = data_path / "reports"
     make_sure_path_exists(data_path_reports)
 
     # create a Copyright folder
-    copyright_path = BASE_PATH / 'Copyright'
+    copyright_path = BASE_PATH / "Copyright"
     make_sure_path_exists(copyright_path)
 
     # create a Digitization folder
-    digitization_path = BASE_PATH / 'Digitization'
+    digitization_path = BASE_PATH / "Digitization"
     make_sure_path_exists(digitization_path)
 
     # create a Authorities folder
-    authorities_path = BASE_PATH / 'Authorities'
+    authorities_path = BASE_PATH / "Authorities"
     make_sure_path_exists(authorities_path)
 
     # create a custom21 folder
-    aleph_custom21 = BASE_PATH / 'Custom21'
+    aleph_custom21 = BASE_PATH / "Custom21"
     make_sure_path_exists(aleph_custom21)
 
     # create a custom21 folder
-    aleph_manage18 = BASE_PATH / 'Manage18'
+    aleph_manage18 = BASE_PATH / "Manage18"
     make_sure_path_exists(aleph_manage18)
 
     # create a custom04 folder
-    if CMS == 'aleph':
-        aleph_custom04 = BASE_PATH / 'Custom04'
+    if CMS == "aleph":
+        aleph_custom04 = BASE_PATH / "Custom04"
     else:
-        aleph_custom04 = BASE_PATH / 'Custom04' / 'Alma'
+        aleph_custom04 = BASE_PATH / "Custom04" / "Alma"
     make_sure_path_exists(aleph_custom04)
 
-    var = data_path, data_path_raw, data_path_processed, data_path_reports, \
-          copyright_path, digitization_path, authorities_path, aleph_custom21, \
-          aleph_manage18, aleph_custom04
+    var = (
+        data_path,
+        data_path_raw,
+        data_path_processed,
+        data_path_reports,
+        copyright_path,
+        digitization_path,
+        authorities_path,
+        aleph_custom21,
+        aleph_manage18,
+        aleph_custom04,
+    )
     return var
 
 
@@ -92,7 +102,7 @@ def get_collections_in_folder(root_folder):
     :return: a dictionary of collections with the branches a keys
 
     """
-    branches = ['Architect', 'Dance', 'Design', 'Theater']
+    branches = ["Architect", "Dance", "Design", "Theater"]
     collections = dict()
 
     # initiate the dictionary with the 4 branches as keys
@@ -100,15 +110,15 @@ def get_collections_in_folder(root_folder):
         collections[br] = list()
 
     for branch in branches:
-        path = root_folder / ('VC-' + branch)
-        for file in path.glob('/*'):
-            if '.' in os.path.basename(file):
+        path = root_folder / ("VC-" + branch)
+        for file in path.glob("/*"):
+            if "." in os.path.basename(file):
                 continue
             collections[branch].append(os.path.basename(file))
     return collections
 
 
-def find_newest_file(path, file_name_pattern, mode='start'):
+def find_newest_file(path, file_name_pattern, mode="start"):
     """
     Function that gets a string pattern with a selected mode
         start - looking for the string pattern at the beginning of the file name
@@ -123,12 +133,24 @@ def find_newest_file(path, file_name_pattern, mode='start'):
 
     """
     try:
-        if mode == 'start':
-            files = [filename for filename in os.listdir(path) if filename.startswith(file_name_pattern)]
-        elif mode == 'mid':
-            files = [filename for filename in os.listdir(path) if file_name_pattern in filename]
-        elif mode == 'end':
-            files = [filename for filename in os.listdir(path) if filename.endswith(file_name_pattern)]
+        if mode == "start":
+            files = [
+                filename
+                for filename in os.listdir(path)
+                if filename.startswith(file_name_pattern)
+            ]
+        elif mode == "mid":
+            files = [
+                filename
+                for filename in os.listdir(path)
+                if file_name_pattern in filename
+            ]
+        elif mode == "end":
+            files = [
+                filename
+                for filename in os.listdir(path)
+                if filename.endswith(file_name_pattern)
+            ]
     except OSError:
         print("no file name matching pattern found in path: {}".format(path))
     finally:
@@ -138,7 +160,7 @@ def find_newest_file(path, file_name_pattern, mode='start'):
     file_dates = []
 
     for index, file in enumerate(files):
-        if file.startswith('~$'):
+        if file.startswith("~$"):
             continue
         created = os.stat(os.path.join(path, file)).st_ctime
         file_dates.append(datetime.datetime.fromtimestamp(created))
@@ -147,7 +169,7 @@ def find_newest_file(path, file_name_pattern, mode='start'):
         print(files[index])
         return files[index]
     else:
-        return ''
+        return ""
 
 
 def get_creation_date(path_to_file):
@@ -158,7 +180,7 @@ def get_creation_date(path_to_file):
     :param path_to_file: the path to the file
     :return: creation date of the file
     """
-    if platform.system() == 'Windows':
+    if platform.system() == "Windows":
         return os.path.getctime(path_to_file)
     else:
         stat = os.stat(path_to_file)
@@ -170,7 +192,7 @@ def get_creation_date(path_to_file):
     # so we'll settle for when its content was last modified.
 
 
-def find_newest_file(path, file_name_pattern, mode='start'):
+def find_newest_file(path, file_name_pattern, mode="start"):
     """
     Function that gets a string pattern with a selected mode
         start - looking for the string pattern at the beginning of the file name
@@ -185,12 +207,24 @@ def find_newest_file(path, file_name_pattern, mode='start'):
 
     """
     try:
-        if mode == 'start':
-            files = [filename for filename in os.listdir(path) if filename.startswith(file_name_pattern)]
-        elif mode == 'mid':
-            files = [filename for filename in os.listdir(path) if file_name_pattern in filename]
-        elif mode == 'end':
-            files = [filename for filename in os.listdir(path) if filename.endswith(file_name_pattern)]
+        if mode == "start":
+            files = [
+                filename
+                for filename in os.listdir(path)
+                if filename.startswith(file_name_pattern)
+            ]
+        elif mode == "mid":
+            files = [
+                filename
+                for filename in os.listdir(path)
+                if file_name_pattern in filename
+            ]
+        elif mode == "end":
+            files = [
+                filename
+                for filename in os.listdir(path)
+                if filename.endswith(file_name_pattern)
+            ]
     except OSError:
         print("no file name matching pattern found in path: {}".format(path))
     finally:
@@ -200,7 +234,7 @@ def find_newest_file(path, file_name_pattern, mode='start'):
     file_dates = []
 
     for index, file in enumerate(files):
-        if file.startswith('~$'):
+        if file.startswith("~$"):
             continue
         created = os.stat(os.path.join(path, file)).st_ctime
         file_dates.append(datetime.datetime.fromtimestamp(created))
@@ -209,7 +243,7 @@ def find_newest_file(path, file_name_pattern, mode='start'):
         print(files[index])
         return files[index]
     else:
-        return ''
+        return ""
 
 
 def is_folder_empty(path):
@@ -221,14 +255,14 @@ def is_folder_empty(path):
     if path.is_dir():
         print(os.listdir(path))
         files = os.listdir(path)
-        if 'desktop.ini' in files:
+        if "desktop.ini" in files:
             files.remove("desktop.ini")
         return not files
     else:
         return True
 
 
-def get_file_path(stage, df, pattern=''):
+def get_file_path(stage, df, pattern=""):
     """
     looks for file in a certain parent folder
     :param stage: parent folder
@@ -236,7 +270,7 @@ def get_file_path(stage, df, pattern=''):
     :param pattern: string pattern of the file name to look for
     :return: return the dataframe with the
     """
-    df[stage] = ''
+    df[stage] = ""
 
     def check_folder(dir_path, collection_id):
         """
@@ -244,28 +278,46 @@ def get_file_path(stage, df, pattern=''):
         :param dir_path: the path to the directory
         :param collection_id: the ID of the collection to look for. this is the root folder of the file structure.
         """
-        print('is_folder_empty(dir_path):', is_folder_empty(dir_path))
+        print("is_folder_empty(dir_path):", is_folder_empty(dir_path))
         if dir_path.is_dir() and not is_folder_empty(dir_path):
-            df.loc[index, stage] = dir_path / find_newest_file(dir_path, collection_id + pattern,
-                                                               mode='mid')
+            df.loc[index, stage] = dir_path / find_newest_file(
+                dir_path, collection_id + pattern, mode="mid"
+            )
         else:
-            df.loc[index, stage] = ''
+            df.loc[index, stage] = ""
         print(dir_path)
 
-    if stage == 'raw Data':
+    if stage == "raw Data":
         for index, row in df.iterrows():
-            dir_path = Path.cwd() / ('VC-' + str(row['branch'])) / str(row['collection']) / 'Data' / 'raw'
-            check_folder(dir_path, str(row['collection']))
+            dir_path = (
+                Path.cwd()
+                / ("VC-" + str(row["branch"]))
+                / str(row["collection"])
+                / "Data"
+                / "raw"
+            )
+            check_folder(dir_path, str(row["collection"]))
 
-    elif stage == 'processed Data':
+    elif stage == "processed Data":
         for index, row in df.iterrows():
-            dir_path = Path.cwd() / ('VC-' + str(row['branch'])) / str(row['collection']) / 'Data' / 'processed'
-            check_folder(dir_path, str(row['collection']))
+            dir_path = (
+                Path.cwd()
+                / ("VC-" + str(row["branch"]))
+                / str(row["collection"])
+                / "Data"
+                / "processed"
+            )
+            check_folder(dir_path, str(row["collection"]))
 
     else:
         for index, row in df.iterrows():
-            dir_path = Path.cwd() / ('VC-' + str(row['branch'])) / str(row['collection']) / stage
-            check_folder(dir_path, str(row['collection']))
+            dir_path = (
+                Path.cwd()
+                / ("VC-" + str(row["branch"]))
+                / str(row["collection"])
+                / stage
+            )
+            check_folder(dir_path, str(row["collection"]))
 
     return df
 
@@ -278,7 +330,7 @@ def write_excel(df, path, sheets):
     :param path: the path name of the output file, or a list of sheets
     :param sheets: can be a list of sheet or
     """
-    writer = pd.ExcelWriter(path, engine='xlsxwriter')
+    writer = pd.ExcelWriter(path, engine="xlsxwriter")
 
     # Convert the dataframe to an XlsxWriter Excel object.
     if type(df) is list and type(sheets) is list:
@@ -292,7 +344,7 @@ def write_excel(df, path, sheets):
     writer.close()
 
 
-def get_branch_colletionID(branch='', collection_id='', batch=False):
+def get_branch_colletionID(branch="", collection_id="", batch=False):
     """
         Get Branch and CollectionID from user
     :param branch: the branch (Architect, Dance, Design or Theater
@@ -303,13 +355,15 @@ def get_branch_colletionID(branch='', collection_id='', batch=False):
     if not batch:
         while True:
             CMS = "alma"
-            branch = input("Please enter the name of the Branch (Architect, Design, Dance, Theater): ")
+            branch = input(
+                "Please enter the name of the Branch (Architect, Design, Dance, Theater): "
+            )
             branch = str(branch)
             try:
                 if branch[0].islower():
                     branch = branch.capitalize()
-                if branch not in ['Dance', 'Architect', 'Theater', 'Design']:
-                    print('need to choose one of: Architect, Design, Dance, Theater')
+                if branch not in ["Dance", "Architect", "Theater", "Design"]:
+                    print("need to choose one of: Architect, Design, Dance, Theater")
                     continue
                 else:
                     # we're happy with the value given.
@@ -326,7 +380,7 @@ def get_branch_colletionID(branch='', collection_id='', batch=False):
                 # we're happy with the value given.
                 break
     elif batch:
-        return 'VC-' + branch, collection_id
+        return "VC-" + branch, collection_id
 
     return CMS, branch, collection_id
 
@@ -349,7 +403,6 @@ def create_df_from_gs(spreadsheet, worksheet):
     #     print(cols)
 
     # remove empty rows
-    df.replace(np.nan, '', inplace=True)
+    df.replace(np.nan, "", inplace=True)
 
     return df, cols
-

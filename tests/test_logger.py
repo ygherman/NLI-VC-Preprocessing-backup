@@ -8,4 +8,3 @@ class TestLogger(TestCase):
     def test___init__(self):
         initialize_logger("VC-Architect", "PAlAv")
         logging.info("bla bla")
-
