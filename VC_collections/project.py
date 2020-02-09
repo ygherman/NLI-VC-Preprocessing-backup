@@ -28,11 +28,15 @@ import sys
 
 import pandas as pd
 
+# ROOTID finder
 from VC_collections.columns import drop_col_if_exists
 from VC_collections.value import find_nth
 
-# ROOTID finder
-ROOTID_finder = lambda x: x[:find_nth(x, '-', x.count('-'))] if '-' in x else ''
+# from value import find_nth
+# from VC_collections.columns import drop_col_if_exists
+# from VC_collections.value import find_nth
+
+ROOTID_finder = lambda x: x[: find_nth(x, "-", x.count("-"))] if "-" in x else ""
 
 
 def get_aleph_sid(custom04_path, collectionID, df):
@@ -45,24 +49,25 @@ def get_aleph_sid(custom04_path, collectionID, df):
     :return: the Dataframe with a system number column
     :return:
     """
-    aleph_sysno_file = os.path.join(custom04_path, collectionID + '_aleph_sysno.xlsx')
+    aleph_sysno_file = os.path.join(custom04_path, collectionID + "_aleph_sysno.xlsx")
     assert os.path.isfile(aleph_sysno_file), "There is no such File: aleph_sysno_file"
 
     # parse sysno file
     xl2 = pd.ExcelFile(aleph_sysno_file)
-    df_aleph = xl2.parse('Sheet1')
+    df_aleph = xl2.parse("Sheet1")
 
     # rename columns
-    df_aleph = df_aleph.rename(columns={'Adlib reference (911a)': '911##a'})
+    df_aleph = df_aleph.rename(columns={"Adlib reference (911a)": "911##a"})
 
     df_aleph = df_aleph.set_index(list(df_aleph)[1])
-    df_aleph.index.names = ['סימול']
+    df_aleph.index.names = ["סימול"]
     df_aleph = df_aleph.iloc[:, 0:1]
-    df_aleph.columns = ['System number']
+    df_aleph.columns = ["System number"]
 
-    df = df.join(df_aleph, how='left')
+    df = df.join(df_aleph, how="left")
 
     return df, df_aleph
+
 
 # TODO refactor this function
 def get_alma_sid(custom04_path, collectionID, df):
@@ -75,8 +80,10 @@ def get_alma_sid(custom04_path, collectionID, df):
     :return: the Dataframe with a system number column
     :return:
     """
-    alma_sysno_file = os.path.join(custom04_path, collectionID + '_alma_sysno.xlsx')
-    assert os.path.isfile(alma_sysno_file), "There is no such File: alma_sysno_file"
+    try:
+        alma_sysno_file = os.path.join(custom04_path, collectionID + "_alma_sysno.xlsx")
+    except:
+        sys.stderr(f"There is no alma_sysno_file File fir collection: {collectionID}.")
 
     # parse sysno file
     xl2 = pd.ExcelFile(alma_sysno_file)
@@ -84,58 +91,66 @@ def get_alma_sid(custom04_path, collectionID, df):
     df_alma = df_alma.applymap(str)
 
     df_alma = df_alma.set_index(list(df_alma.columns)[1])
-    df_alma.index.names = ['סימול']
+    df_alma.index.names = ["סימול"]
     df_alma = df_alma.iloc[:, 0:1]
 
     # rename columns
-    df_alma.columns = ['MMS ID']
+    df_alma.columns = ["MMS ID"]
 
     # convert MMS ID col to string
 
-    df = df.merge(df_alma, on='סימול', how='left')
+    df = df.merge(df_alma, on="סימול", how="left")
 
     # todo change this to logger
-    print(f'these MMSIDs were not found\n', df[df['MMS ID'].isna()])
-    df = drop_col_if_exists(df, '911_1')
+
+    df = drop_col_if_exists(df, "911_1")
     try:
-        df['MMS ID'] = df['MMS ID'].astype(str)
+        df["MMS ID"] = df["MMS ID"].astype(str)
     except ValueError:
-        sys.stderr.write(f"There is a missing MMS ID at {df.loc[df['MMS ID'].isna()==True, 'סימול']}."
-                         f"\n Please update the Alma MMS ID for that call number and run again!")
+        sys.stderr.write(
+            f"There is a missing MMS ID at {df.loc[df['MMS ID'].isna()==True, 'סימול'].index}."
+            f"\n Please update the Alma MMS ID for that call number and run again!"
+        )
         sys.exit()
 
     df = df.reset_index()
-    df = drop_col_if_exists(df, '911_1')
-    df = df.set_index('MMS ID')
-    df.index.name = '001'
-    df = drop_col_if_exists(df, '911_1')
+    df = drop_col_if_exists(df, "911_1")
+    df = df.set_index("MMS ID")
+    df.index.name = "001"
+    df = drop_col_if_exists(df, "911_1")
 
     return df, df_alma
 
 
-def get_branch_colletionID(branch='', collectionID='', batch=False):
+def get_branch_colletionID(
+    branch: str = "", collectionID: str = "", batch: bool = False
+) -> (str, str, str):
     """
         Get Branch and CollectionID
     :param branch: the branch (Architect, Dance, Design or Theater
     :param collectionID: The collection ID
     :param batch: if the calling results from a batch process
-    :return: The branch and the collection ID
+    :return: tuple of 3 containing CMS, branch and the collection ID
     """
     if not batch:
         while True:
-            CMS = input("Preprecessing for Aleph - write 'Aleph'; Preprocessing for Alma - write 'Alma")
-            CMS = CMS.lower()
+            # CMS = input(
+            #     "Preprecessing for Aleph - write 'Aleph'; Preprocessing for Alma - write 'Alma"
+            # )
+            CMS = "Alma".lower()
 
-            branch = input("Please enter the name of the Branch (Architect, Design, Dance, Theater): ")
+            branch = input(
+                "Please enter the name of the Branch (Architect, Design, Dance, Theater): "
+            )
             branch = str(branch)
             if branch[0].islower():
                 branch = branch.capitalize()
-            if branch not in ['Dance', 'Architect', 'Theater', 'Design']:
-                print('need to choose one of: Architect, Design, Dance, Theater')
+            if branch not in ["Dance", "Architect", "Theater", "Design"]:
+                print("need to choose one of: Architect, Design, Dance, Theater")
                 continue
             else:
                 # we're happy with the value given.
-                branch = 'VC-' + branch
+                branch = "VC-" + branch
                 break
 
         while True:
@@ -146,7 +161,7 @@ def get_branch_colletionID(branch='', collectionID='', batch=False):
                 # we're happy with the value given.
                 break
     elif batch:
-        return 'VC-' + branch, collectionID
+        return "VC-" + branch, collectionID
 
     return CMS, branch, collectionID
 
@@ -161,20 +176,22 @@ def get_root_index_and_title(df, index):
     """
     logger = logging.getLogger(__name__)
 
-    if 'סימול' in list(df.columns):
-        check_col_series = df['סימול'].tolist()
+    if "סימול" in list(df.columns):
+        check_col_series = df["סימול"].tolist()
     else:
         logger.error("[ERROR] no [סימול] column in table, check table")
         sys.exit()
 
-    root_call_number = ROOTID_finder(df.loc[index, 'סימול'])
-    root_index = df.index[df['סימול'] == root_call_number].tolist()[0]
+    root_call_number = ROOTID_finder(df.loc[index, "סימול"])
+    root_index = df.index[df["סימול"] == root_call_number].tolist()[0]
 
     if root_call_number in check_col_series:
-        root_index = df[df['סימול'] == root_call_number].index.tolist()[0]
-        title = df.loc[root_index, '24510'].strip('$$a')
+        root_index = df[df["סימול"] == root_call_number].index.tolist()[0]
+        title = df.loc[root_index, "24510"].strip("$$a")
     else:
-        logger.error(f"ROOT MMS ID of {index} is not in table - check table! and run again")
+        logger.error(
+            f"ROOT MMS ID of {index} is not in table - check table! and run again"
+        )
         sys.exit()
 
     return root_index, title.strip()
@@ -187,6 +204,3 @@ def get_collection_paths(collectionID):
     """
 
     return ""
-
-
-

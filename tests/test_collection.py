@@ -3,8 +3,6 @@ from unittest.mock import Mock
 
 
 class TestCollection(TestCase):
-
-
     def test___init__(self):
         test_collection = Mock()
         test_collection.assert_called_with()
@@ -14,7 +12,6 @@ class TestCollection(TestCase):
         test_collection = Mock()
         test_collection
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
-
-

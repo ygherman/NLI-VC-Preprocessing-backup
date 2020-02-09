@@ -52,19 +52,14 @@ def create_MARC_911(df):
 
     """
     df["911"] = df["סימול"].apply(lambda x: "$$a" + x)
-    while True:
-        collection_name_heb = input("Please enter a Collection Name in Hebrew: \n")
-        if not collection_name_heb:
-            print("Please enter a Collection Name.")
-        else:
-            break
 
-    while True:
-        collection_name_eng = input("Please enter a Collection Name in English: \n")
-        if not collection_name_eng:
-            print("Please enter a Collection Name.")
-        else:
-            break
+    collection_id = df.loc[df[df["רמת תיאור"] == "Section Record"].index[0], "סימול"]
+
+    collection_name_heb = Authority_instance.df_credits.loc[collection_id, "שם הארכיון"]
+    collection_name_eng = Authority_instance.df_credits.loc[
+        collection_id, "שם הארכיון באנגלית"
+    ]
+
     df["911_1"] = df["911"] + "$$c" + collection_name_heb
     df["093_1"] = df["911_1"]
     df["911_2"] = df["911"] + "$$c" + collection_name_eng
@@ -185,7 +180,9 @@ def create_MARC_245(df):
     else:
         return df
 
-    df["2461"] = df[col].apply(lambda x: "$$iTranslated title:$$a" + x)
+    df["2461"] = df[col].apply(
+        lambda x: "$$iTranslated title:$$a" + x if x != "" else ""
+    )
 
     return df
 
@@ -239,33 +236,33 @@ def create_MARC_500(df):
     for index, row in df.iterrows():
         new_value = "$$a"
         if "מספר מיכל" in list(df.columns.values) and str(row["מספר מיכל"]) != "":
-            new_value = new_value + "מספר מיכל: " + str(row["מספר מיכל"]) + ";"
+            new_value = new_value + "מספר מיכל: " + str(row["מספר מיכל"]) + "; "
         if "מיכל" in list(df.columns.values) and row["מיכל"] != "":
-            new_value = new_value + "מספר מיכל: " + str(row["מיכל"]) + ";"
+            new_value = new_value + "מספר מיכל: " + str(row["מיכל"]) + "; "
         if (
             "קוד תיק ארכיון" in list(df.columns.values)
             and str(row["קוד תיק ארכיון"]).replace(".0", "") != ""
         ):
-            new_value = new_value + "קוד תיק ארכיון: " + row["קוד תיק ארכיון"] + ";"
+            new_value = new_value + "קוד תיק ארכיון: " + row["קוד תיק ארכיון"] + "; "
         if (
             "הערות גלוי למשתמש קצה" in list(df.columns.values)
             and row["הערות גלוי למשתמש קצה"] != ""
         ):
-            new_value = new_value + "הערות: " + row["הערות גלוי למשתמש קצה"] + ";"
+            new_value = new_value + "הערות: " + row["הערות גלוי למשתמש קצה"] + "; "
         if (
             "מילות מפתח_מקומות" in list(df.columns.values)
             and row["מילות מפתח_מקומות"] != ""
         ):
             new_value = (
-                new_value + "מקומות המוזכרים בתיק: " + row["מילות מפתח_מקומות"] + ";"
+                new_value + "מקומות המוזכרים בתיק: " + row["מילות מפתח_מקומות"] + "; "
             )
         if "משך" in list(df.columns.values) and row["משך"] != "":
-            new_value = new_value + "משך ההקלטה: " + row["משך"] + ";"
+            new_value = new_value + "משך ההקלטה: " + row["משך"] + "; "
 
         if new_value == "$$a":
             new_value = ""
 
-        df.loc[index, "500"] = new_value
+        df.loc[index, "500"] = new_value.rstrip()
 
     return df
 
@@ -279,8 +276,12 @@ def create_MARC_500s_4collection(df):
             "ביבליוגרפיה ומקורות מידע": "581",
         }
     )
-    df["500_1"] = df["500_1"].apply(lambda x: "$$a" + x if x != "" else "")
-    df["500_2"] = df["500_2"].apply(lambda x: "$$a" + x if x != "" else "")
+    df["500_1"] = df["500_1"].apply(
+        lambda x: "$$aהיסטוריה ארכיונית: " + x if x != "" else ""
+    )
+    df["500_2"] = df["500_2"].apply(
+        lambda x: "$$aתיאור הטיפול באוסף בפרויקט: " + x if x != "" else ""
+    )
     df["500_3"] = df["500_3"].apply(lambda x: "$$aסוג האוסף: " + x if x != "" else "")
     df = explode_col_to_new_df(df, "581")
     cols_581 = [col for col in list(df.columns) if "581" in col]
@@ -292,7 +293,7 @@ def create_MARC_500s_4collection(df):
 
 def create_MARC_561(df):
     """
-        onverts the columns [סימול מקורי] to  MARC21 561 encoded field.
+        converts the columns [סימול מקורי] to  MARC21 561 encoded field.
 
     Definition: opy-specific field that contains information concerning the ownership and custodial history o
     f the described materials from the time of their creation to the time of their accessioning,
@@ -304,11 +305,11 @@ def create_MARC_561(df):
     :param df: The original Dataframe
     :return: The Dataframe with the new 561 field
     """
-    if "סימולמקורי" in list(df.columns.values):
-        df["561"] = df["סימולמקורי"].apply(
+    if "סימול מקורי" in list(df.columns.values):
+        df["561"] = df["סימול מקורי"].apply(
             lambda x: "$$a" + str(x) if str(x) != "" else ""
         )
-        df = drop_col_if_exists(df, "סימולמקורי")
+        df = drop_col_if_exists(df, "סימול מקורי")
     return df
 
 
@@ -607,9 +608,9 @@ def create_MARC_defualt_copyright(df):
     df["5420"] = (
         "$$lCopyright status not determined; "
         + "Contract$$nNo copyright analysis"
-        + f'$$oNoam Solan by Yael Gherman {datetime.datetime.now().strftime("%Y%m%d")}$$qללא ניתוח מצב זכויות'
+        + f'$$oYael Gherman {datetime.datetime.now().strftime("%Y%m%d")}$$qללא ניתוח מצב זכויות'
     )
-    df["5061"] = "$$aLibrary premises only;$0000000008"
+    df["5061"] = "$$aStaff Only;$$0000000018"
     df["540"] = (
         "$$aאיסור העתקה"
         + "$$uhttp://web.nli.org.il/sites/NLI/Hebrew/library/items-terms-of-use/Pages/nli-copying-prohibited.aspx"
@@ -665,7 +666,7 @@ def create_marc_655(df):
                 if ")" in term:
                     broader_terms.append(re.findall(r"\((.*)\)", term)[0])
             for term in broader_terms:
-                if term == "תצלומים":
+                if term == "תצלומים" or term == "מסמכים מנהליים":
                     continue
                 final.append(term.strip())
             lst_655_7 = lst_655_7 + final
@@ -735,7 +736,7 @@ def create_MARC_041(df):
     :return: the new data frame with the new MARC 041 encoded Field
     """
     col = "שפה"
-
+    # TODO if column שפה is empty, then it is dropped. Why?
     try:
         col
     except NameError:
@@ -749,16 +750,15 @@ def create_MARC_041(df):
                 continue
             languages = row["שפה"].split(";")
             try:
-
                 new_lang = [
                     "$$a" + language_mapper["קוד שפה"][k]
                     for k in languages
                     if len(languages) > 0
                 ]
+                df.loc[index, "041"] = "".join(new_lang)
             except:
-                pass
-            df.loc[index, "041"] = "".join(new_lang)
-
+                print("problem with ", index)
+                sys.stderr(f"problem with languages in {index}")
             field_008 = list(row["008"])
             # insert MARC langauge code in positions 35-37
             for i in range(35, 38):
@@ -787,6 +787,10 @@ def create_MARC_542_post_copyright(df, col):
     return df
 
 
+def correct_506_privacy(df):
+    return df
+
+
 def create_MARC_540(df):
     """
         fuction's input is the entire table as a dataframe and constructs the 540 MARC field.
@@ -811,6 +815,8 @@ def create_MARC_540(df):
             df["540_" + col_number] = df["מגבלות פרטיות"].apply(
                 lambda x: "$$a" + x if x != "" else ""
             )
+
+        # df = correct_506_privacy(df[df])
     return df
 
 
@@ -833,6 +839,39 @@ def create_MARC_597(df, col):
     df = drop_col_if_exists(df, col[1])
 
     return df
+
+
+# TODO
+
+
+def extract_years_from_text(date_text):
+    years = re.findall(r"(\d{4})", str(date_text))
+    years = sorted([year for year in years])
+
+    if len(years) < 2:
+        return None
+    else:
+        return years
+
+
+def check_date_values_in_row(date_start, date_end, date_free_text, index):
+    if date_start != "" and date_end != "":
+        return date_start, date_end
+    elif date_free_text != "":
+        date_text = date_free_text
+    else:
+        sys.stderr(
+            f"[DATE] Problem with date columns at index: {index} - please check!"
+        )
+        sys.exit()
+
+    years = extract_years_from_text(date_text)
+    if years is None:
+        return None, None
+    elif len(years) <= 1:
+        return None, None
+    else:
+        return years[0], years[1]
 
 
 def create_MARC_260(df, col, date_cols):
@@ -868,50 +907,63 @@ def create_MARC_260(df, col, date_cols):
     df[date_cols[1]] = df[date_cols[1]].apply(lambda x: x[:4])
 
     for index, row in df.iterrows():
-        if row[col] == "" or row[col] is None:
-            continue
-        countries = row[col].split(";")
-        countries = list(filter(None, countries))
-        if len(countries) > 0:
-            field_008_country = [
-                "$$a" + countries_code_mapper[k] for k in countries if len(k) > 0
-            ]
-            first_country = field_008_country[0][3:]
-            if len(first_country) == 2:
-                first_country += "#"
+        if row[col] != "" or row[col] is not None:
 
-            df.loc[index, "044"] = "".join(field_008_country)
-        else:
-            first_country = "xx#"  # code xx# is xx# No place, unknown, or undetermined
+            countries = row[col].split(";")
+            countries = list(filter(None, countries))
+            if len(countries) > 0:
+                field_008_country = [
+                    "$$a" + countries_code_mapper[k] for k in countries if len(k) > 0
+                ]
+                first_country = field_008_country[0][3:]
+                if len(first_country) == 2:
+                    first_country += "#"
 
-        countries = ["$$e[" + x + "]$$9heb" for x in countries]
+                df.loc[index, "044"] = "".join(field_008_country)
+            else:
+                first_country = (
+                    "xx#"  # code xx# is xx# No place, unknown, or undetermined
+                )
 
-        if row[date_cols[2]] == "" or row[date_cols[2]] == None:
-            df.loc[index, "260"] = "".join(countries)
-        else:
-            df.loc[index, "260"] = (
-                "".join(countries) + "$$g" + str(row[date_cols[2]]).strip()
+            countries = ["$$e[" + x + "]$$9heb" for x in countries]
+
+            if row[date_cols[2]] == "" or row[date_cols[2]] is None:
+                df.loc[index, "260"] = "".join(countries)
+            else:
+                df.loc[index, "260"] = (
+                    "".join(countries) + "$$g" + str(row[date_cols[2]]).strip()
+                )
+
+            # deal with 008 field
+            # insert date 1 and date 2 in positions 7-14
+            field_008 = list(row["008"])
+
+            early_date, late_date = check_date_values_in_row(
+                row[date_cols[0]], row[date_cols[1]], row[date_cols[2]], index
             )
+            if early_date is None:
+                sys.stderr(
+                    f"[DATE] Error with date - check MMS ID {index}, record call number {df.loc[index, 'סימול']}"
+                )
 
-        # deal with 008 field
-        # insert date 1 and date 2 in positions 7-14
-        field_008 = list(row["008"])
-        date = row[date_cols[0]] + row[date_cols[1]]
-        try:
-            for i in range(7, 15):
-                field_008[i] = date[i - 7]
-        except:
-            print("error")
-            sys.exit()
-        # insert MARC country code in positions 15-17
-
-        for i in range(15, 18):
+            date = str(early_date) + str(late_date)
             try:
-                field_008[i] = first_country[i - 15]
+                for i in range(7, 15):
+                    field_008[i] = date[i - 7]
             except:
-                pass
+                sys.stderr(
+                    f"[DATE] Error with date - check MMS ID {index}, record call number {df.loc[index, 'סימול']}"
+                )
+                sys.exit()
+            # insert MARC country code in positions 15-17
 
-        df.loc[index, "008"] = "".join(field_008)
+            for i in range(15, 18):
+                try:
+                    field_008[i] = first_country[i - 15]
+                except:
+                    pass
+
+            df.loc[index, "008"] = "".join(field_008)
 
     df = drop_col_if_exists(df, "col")
 
@@ -1012,7 +1064,17 @@ def format_cat_date(df):
 def create_date_format(string_date):
     logger = logging.getLogger(__name__)
     string_date_to_datetime = ""
-    date_formats = ["%Y-%m-%d", "%Y-%m", "%Y-%m", "%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S"]
+    date_formats = [
+        "%Y-%m-%d",
+        "%Y-%m",
+        "%Y-%m",
+        "%Y-%m-%d %H:%M",
+        "%Y-%m-%d %H:%M:%S",
+        "%d/%m/%Y",
+        "%m/%d/%Y",
+        "%m/%d/%Y %H:%M:%S",
+        "%Y%m%d %H:%M"
+    ]
     i = 0
     while True:
         try:
@@ -1024,7 +1086,7 @@ def create_date_format(string_date):
             i += 1
         except IndexError:
             logger.error(
-                f"[921/933] didn't fine the write date format for [{string_date}]"
+                f"[921/933] didn't find the right date format for [{string_date}]"
             )
             sys.exit()
 
@@ -1453,7 +1515,7 @@ def create_MARC_590(df):
         df["590_2"] = df["590_2"].where(df["590_2"] == "$$a", "")
 
     # TODO - לא כל הרשומות רלוונטיות לזכויות יוצרים - האם לסמן על כל הרשומות כמוכנות לניתוח זכויות יוצרים?
-    df["590_3"] = "$$aמוכן לניתוח זכויות יוצרים"
+    df["590_3"] = "$$aVisual art ready for copyright analysis"
 
     return df
 
@@ -1502,7 +1564,7 @@ def create_907_dict(ROS_file: minidom) -> dict:
     return d
 
 
-def create_907_value(id, dict_907):
+def create_907_value(dict_907):
     words = []
     for tag, value in dict_907.items():
 
@@ -1514,11 +1576,18 @@ def create_907_value(id, dict_907):
 
 
 def add_MARC_907(collection):
+
     rosetta_file_path = str(
         collection.digitization_path / "ROS" / (collection.collection_id + "_907.xml")
     )
+    if not Path.exists(Path(rosetta_file_path)):
+        sys.stderr.write(
+            f"[ERROR] no file at {rosetta_file_path} - please add file and run again!"
+        )
+        sys.exit()
+
     rosetta_file = minidom.parse(rosetta_file_path)
-    df = collection.df_final_data
+    df = collection.df_final_data.reset_index(drop=True).set_index("mms_id")
     rosetta_dict = create_907_dict(rosetta_file)
 
     df["907"] = ""
@@ -1526,17 +1595,18 @@ def add_MARC_907(collection):
         try:
             if index == np.nan:
                 sys.stderr.write(f"this index: {index} for {row['סימול']} is missing")
-            elif index not in rosetta_dict.keys():
+            elif str(index) not in rosetta_dict.keys():
                 sys.stderr.write(
-                    f"there is no 907 field for : {index}, for call number {row['סימול']}."
+                    f"there is no 907 field for : {index}, for call number {row['סימול']}\n."
                 )
                 sys.exit()
-            elif len(rosetta_dict[index]) == 0:
+            elif len(rosetta_dict[str(index)]) == 0:
                 continue
             else:
-                df.loc[index, "907"] = create_907_value(index, rosetta_dict[index])
+                df.loc[index, "907"] = create_907_value(rosetta_dict[str(index)])
         except:
             pass
+    collection.df_final_data = df
 
     return collection
 

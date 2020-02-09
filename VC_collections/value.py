@@ -23,6 +23,7 @@ VERSION
     $
 """
 import re
+import sys
 from datetime import datetime
 
 import dateutil
@@ -31,12 +32,13 @@ from fuzzywuzzy import process
 
 
 def filter_characters(character):
-    characters_to_filter = [None, np.nan, ' ']
+    characters_to_filter = [None, np.nan, " "]
 
     if character in characters_to_filter:
         return True
     else:
         return False
+
 
 def isNaN(value):
     """
@@ -81,7 +83,7 @@ def utf8len(s):
     :param s: the string to check
     :return: the lentgh of a the given string s
     """
-    return len(s.encode('utf-8'))
+    return len(s.encode("utf-8"))
 
 
 def create_list(x, delimiter):
@@ -112,21 +114,22 @@ def date_validate(date_text):
     :param date_text: the date string to check
     """
     try:
-        datetime.strptime(date_text, '%Y-%m-%d')
+        datetime.strptime(date_text, "%Y-%m-%d")
     except ValueError:
         raise ValueError("Incorrect data format, should be YYYY-MM-DD")
 
 
 # strip trailing semicolon function
-semiColonStriper = lambda x: x.rstrip(';')
+semiColonStriper = lambda x: x.rstrip(";")
 
 # Cleaning Text from special Characters
-clean_text = lambda x: ''.join(e for e in str(x) if e.isalnum())
+clean_text = lambda x: "".join(e for e in str(x) if e.isalnum())
 
 # strip whitespaces function
 whiteSpaceStriper = lambda x: x.strip()
 
-clean_name = lambda x: re.sub(r'(?<=[.,])(?=[^\s])', r' ', x)
+clean_name = lambda x: re.sub(r"(?<=[.,])(?=[^\s])", r" ", x)
+
 
 def replace_lst_dict(lst, dictionary):
     for k, v in enumerate(lst):
@@ -136,15 +139,46 @@ def replace_lst_dict(lst, dictionary):
 
 
 def format_cat_date(df):
-    if clean_text('תאריך הרישום') in list(df.columns):
-        cat_date_col = clean_text('תאריך הרישום')
+    if clean_text("תאריך הרישום") in list(df.columns):
+        cat_date_col = clean_text("תאריך הרישום")
     else:
-        cat_date_col = process.extractOne('date_cataloguing', list(df.columns))
+        cat_date_col = process.extractOne("date_cataloguing", list(df.columns))
 
     df[cat_date_col] = df[cat_date_col].apply(str)
 
-    df[cat_date_col] = df[cat_date_col].apply(lambda x:
-                                              datetime.strftime(dateutil.parser.parse(x), '%Y%m')
-                                              if len(x) > 6 else x)
+    df[cat_date_col] = df[cat_date_col].apply(
+        lambda x: datetime.strftime(dateutil.parser.parse(x), "%Y%m")
+        if len(x) > 6
+        else x
+    )
 
     return df
+
+
+def extract_years_from_text(date_text):
+    years = re.findall(r"(\d{4})", str(date_text))
+    years = sorted([year for year in years])
+
+    if len(years) < 1:
+        return None
+    elif len(years) == 1:
+        return [years[0], years[0]]
+    else:
+        return years
+
+
+def check_date_values_in_row(date_start, date_end, date_free_text):
+    if date_start != "" and date_end != "":
+        return date_start, date_end
+    elif date_free_text != "":
+        date_text = date_free_text
+    else:
+        sys.stderr(f"[DATE] Problem with date columns - please check!")
+        sys.exit()
+
+    years = extract_years_from_text(date_text)
+    if years is None:
+        return None, None
+    elif len(years) == 1:
+        return years[0], years[0]
+    return years[0], years[1]
