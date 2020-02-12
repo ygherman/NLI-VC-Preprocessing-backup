@@ -2,7 +2,6 @@ import difflib
 import logging
 import os
 import pprint
-import sys
 from collections import defaultdict
 
 import pandas as pd
@@ -149,14 +148,11 @@ def authority_Excelfile(df, column):
     :param column:
     :return: the authority dataframe
     """
-    df = df.reset_index()
-    try:
-        df_auth = pd.DataFrame.from_dict(
-            create_authority_file(df[["UNITID", column]].dropna(how="any"), column),
-            orient="index",
-        )
-    except:
-        sys.exit()
+    df = df.reset_index(drop=True)
+    df_auth = pd.DataFrame.from_dict(
+        create_authority_file(df[["UNITID", column]].dropna(how="any"), column),
+        orient="index",
+    )
     # create new column to count the number of occurrences
     df_auth["COUNT"] = df_auth["UNITID"].apply(lambda x: len(x))
 
@@ -395,7 +391,7 @@ def map_relators(df, authority_role_list):
     """
 
     :param authority_role_list:
-    :param df:
+    :param collection:
     :return:
     """
     df["COMBINED_CREATORS"] = df["COMBINED_CREATORS"].str.strip("\n")
@@ -471,7 +467,7 @@ def correct_relators(
         roles_check_file_name = (
             collection.collection_id + "_roles_check" + collection.dt_now + ".xlsx"
         )
-        logger.info(
+        collection.logger.info(
             f"[ROLES] Creating {collection.collection_id} _roles_check_ "
             f"{collection.dt_now}.xlsx file"
         )
@@ -486,7 +482,7 @@ def correct_relators(
 
     if len(role_not_found) > 0:
         for role in role_not_found:
-            logger.info(
+            collection.logger.info(
                 "[ROLES] Printing roles that are not found - and the options for corrections"
             )
             pprint.pprint(str(role))
@@ -506,7 +502,6 @@ def clean_creators(collection: Collection) -> Collection:
     """
     df = collection.full_catalog
     df = replace_NaN(df)
-    logger = logging.getLogger(__name__)
 
     authority_role_list = list(
         set(Authority_instance.df_creator_corps_role["CREATOR_CROPS_ROLE"])
@@ -515,7 +510,7 @@ def clean_creators(collection: Collection) -> Collection:
     creators_cols = [col for col in df.columns if "CREATOR" in col]
     if "COMBINED_CREATORS" in creators_cols:
         creators_cols.remove("COMBINED_CREATORS")
-        logger.info("[CREATORS] COMBINED_CREATORS found: 1 creators column")
+        collection.logger.info("[CREATORS] COMBINED_CREATORS found: 1 creators column")
         for col in creators_cols:
             df = drop_col_if_exists(df, col)
         df = remove_duplicate_in_column(df, "COMBINED_CREATORS")
@@ -547,6 +542,7 @@ def check_values_against_cvoc(
     """
 
     :param collection:
+    :param df:
     :param col:
     :param mapping_dict:
     :return:
@@ -599,17 +595,16 @@ def fix_values_in_column(col, err, new_val):
 
             col = col.apply(lambda x: x.split(";"))
             try:
-                for index, line in col.items():
-                    for i, val in enumerate(line):
-                        if val == err:
-                            line[i] = new_val
-                    col.at[index] = line
+
+                fixed_col = col.apply(
+                    lambda line: [val.replace(err, new_val) for val in line]
+                )
             except:
                 print(
                     f"Bad error value: [{err}], please correct in original data, and run again."
                 )
 
-            col = col.apply(lambda x: ";".join(x))
+            col = fixed_col.apply(lambda x: ";".join(x))
         return None, col
     return err, col
 

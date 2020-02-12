@@ -35,8 +35,6 @@ def get_google_drive_credentials():
     ]
 
     for f in get_google_drive_api_path(Path.cwd()):
-        clientsecret_file_path = Path("./google_drive_api")
-
         if "google_drive" in f.name:
             clientsecret_file_path = f
             break
@@ -246,7 +244,7 @@ def clean_catalog(df):
     return df
 
 
-def strip_column_name(cols_names):
+def strip_column_named(cols_names):
     new_columns_names = []
     for col in cols_names:
         col = "".join(e.strip().lower() for e in str(col) if e.isalnum())
@@ -254,26 +252,12 @@ def strip_column_name(cols_names):
     return new_columns_names
 
 
-def map_field_names_to_english(col_names: list) -> list:
+def map_field_names_to_english(col_names):
     # replace the field name according to the generic field mapper
-    ad = AlphabetDetector()
-    # new_col_names = map(field_mapper.get, col_names)
-    print("col_names:", col_names)
-    new_col_names = [col for col in col_names]
-
+    new_col_names = map(field_mapper.get, col_names)
     try:
-        new_col_names = [field_mapper.get(x, "no mapping").upper() for x in col_names]
-        if "NO MAPPING" in new_col_names:
-            print(
-                "columns not mapped:",
-                "\n".join(
-                    [f"{x}: {field_mapper.get(x)}" for x in enumerate(new_col_names)]
-                ),
-            )
-
+        new_col_names = [x.upper() for x in new_col_names]
     except:
-        for col in col_names:
-            sys.stderr(f"{col} - does not exist")
         sys.exit()
     return new_col_names
 
@@ -335,7 +319,7 @@ class Collection:
         logger.info(
             "[HEADERS] strip column names from special characters and whitespaces."
         )
-        df.columns = strip_column_name(list(df.columns))
+        df.columns = strip_column_named(list(df.columns))
         logger.info(
             f"[HEADERS] Changing Hebrew column names into English - according to field_mapper."
         )
@@ -369,10 +353,7 @@ class Collection:
             "\n".join([f"{i}: {x}" for i, x in enumerate(list(df_collection.columns))]),
         )
 
-        try:
-            combined_catalog = pd.concat([df_collection, df_catalog], axis=0, sort=True)
-        except:
-            sys.exit()
+        combined_catalog = pd.concat([df_collection, df_catalog], axis=0, sort=True)
 
         assert (
             combined_catalog is not None
@@ -429,7 +410,7 @@ class Collection:
             :return:
             """
             df = df.replace("", np.nan)
-            df = df.dropna(axis=0, how="all")
+            df = df.dropna(how="all")
             if "סימול פרויקט" in list(df.columns):
                 df = df.dropna(subset=["סימול פרויקט"])
 
@@ -545,9 +526,9 @@ class Collection:
 
         # create directory and sub-folders for collection
         self.BASE_PATH = (
-            Path("C:/Users/Yaelg/Google Drive/National_Library/Python")
-            / (branch)
-            / collection_id
+                Path("C:/Users/Yaelg/Google Drive/National_Library/Python")
+                / ("VC-" + branch)
+                / collection_id
         )
 
         # initialize directory with all folder and sub-folders for the collection
@@ -586,7 +567,9 @@ class Collection:
             self.aleph_custom04_path,
         )
 
-        # set up logger for collection instanc
+        # set up logger for collection instance
+        # initialize_logger(self.branch, self.collection_id)
+        # self.logger = logging.getLogger(__name__)
         logger = logging.getLogger(__name__)
 
         (
@@ -595,10 +578,16 @@ class Collection:
             self.google_sheet_file_name,
         ) = find_catalog_gspread(connect_to_google_drive(), self.collection_id)
 
+        # self.logger.info("Creating ")
         logger.info("Creating ")
 
         self.dfs = create_xl_from_gspread(client, self.google_sheet_file_id)
-        export_entire_catalog(self, self.dfs, stage="PRE_FINAL")
+
+        self.catalog_dfs = self.fetch_data()
+        if len(self.catalog_dfs) == 0:
+            pass
+        else:
+            export_entire_catalog(self, self.catalog_dfs, stage="PRE_FINAL")
 
         self.df_catalog = remove_instructions_row(remove_empty_rows(self.dfs["קטלוג"]))
         self.df_collection = remove_instructions_row(
@@ -610,12 +599,9 @@ class Collection:
         self.df_corporation = remove_instructions_row(
             remove_empty_rows(self.dfs["מוסדות"])
         )
-        try:
-            if self.branch != "VC-Design" and self.branch != "Design":
-                work_col = [x for x in self.dfs.keys() if "יצירות" in x][0]
-                self.df_works = self.dfs[work_col]
-        except:
-            pass
+
+        work_col = [x for x in self.dfs.keys() if "יצירות" in x][0]
+        self.df_works = self.dfs[work_col]
 
         self.full_catalog = self.make_one_table(self)
 
@@ -631,6 +617,7 @@ class Collection:
                     columns={"Unnamed: 1": "סימול", "": "mms_id"}
                 )
             )
+
             print(
                 "\n".join(
                     [

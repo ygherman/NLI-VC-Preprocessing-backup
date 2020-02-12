@@ -13,7 +13,7 @@ def initialize_logger(branch, collection_id):
     """
 
     reports_path = (
-        Path.cwd().parent.parent / branch / collection_id / "Data" / "reports"
+            Path.cwd().parent.parent / ("VC-" + branch) / collection_id / "Data" / "reports"
     )
 
     logging.basicConfig(

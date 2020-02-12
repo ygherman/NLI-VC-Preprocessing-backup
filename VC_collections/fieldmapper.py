@@ -77,7 +77,6 @@ field_mapper = {
     "מספרהמיכל": "CONTAINER",
     "מספרהמיכלבונמצאהתיקפריט": "CONTAINER",
     "מספרמיכל": "CONTAINER",
-    "מספרמערכתאלף": "MMS ID",
     "מספרקבציםלסריקה": "EST_FILES_NUM",
     "מספרקבציםמוערך": "EST_FILES_NUM",
     "מקוםהפרסום": "PUBLICATION_COUNTRY",
@@ -101,7 +100,6 @@ field_mapper = {
     "פומבי": "PUBLIC",
     "קודתיקארכיון": "ARCHIV_ID",
     "מספרתיקארכיון": "ARCHIV_ID",
-    "קישורלסריקה": "IE",
     "קנהמידה": "SCALE",
     "רושם": "CATALOGUER",
     "רמתתיאור": "LEVEL",
@@ -133,10 +131,6 @@ field_mapper = {
     "תיאור": "SCOPECONTENT",
     "תיאורהחומרבפרויקטתרבותחזותיתואמנויותהבמה": "APPRAISAL",
     "תיאורהטיפולבאוסףבפרויקט": "APPRAISAL",
-    "הערותפנימיותלטיובסריקות": "NOTES_SCAN_LINK_REPAIR",
-    "הערות פנימיות לטיוב": "NOTES_SCAN_LINK_REPAIR",
-    "סימוללטיוב": "CALL_NUM_TO_LINK_REPAIR",
-    "לסימול": "CALL_NUM_TO_LINK_REPAIR",
 }
 
 field_mapper_back = {
@@ -196,11 +190,7 @@ field_mapper_back = {
     "PHOTO_DATE_EARLY": "תאריך תצלום חפץ/טקסט מוער מוקדם",
     "SCOPECONTENT": "תיאור",
     "APPRAISAL": "תיאורהטיפולבאוסףבפרויקט",
-    "NOTES_SCAN_LINK_REPAIR": "הערות פנימיות לטיוב סריקות",
-    "CALL_NUM_TO_LINK_REPAIR": "סימול לטיוב",
-    "MMS ID": "מספר מערכת אלף",
 }
-
 
 level_mapper = {
     "אוסף": "Section Record",
@@ -218,14 +208,12 @@ level_mapper = {
     "תתסידרה": "Sub-Series Record",
 }
 
-
 collection_field_mapper = {
     "סימול האוסף": "UNITID",
     "סימול מקורי": "ORIDINAL_ID",
     "רמת תיאור": "LEVEL",
     "שם האוסף": "UNITITLE",
     "תאריך חופשי": "DATE",
-    "תאריכים": "DATE",
     "יוצרי האוסף": "ADD_CREATOR_PERS",
     "תאריכים": "DATE",
     "מילות מפתח_אישי ליבה": "PERSNAME",
@@ -234,10 +222,8 @@ collection_field_mapper = {
     "מילות מפתח_נושאי ליבה": "SUBJECT",
     "סוג חומר": "ARCHIVAL_MATERIAL",
     "היסטוריה ארכיונית": "BIOGHIST",
-    "שיטת הסידור": "ARRANGEMENT",
     "תיאור הטיפול באוסף בפרויקט": "APPRAISAL",
     "תיאורהאוסףבפרויקטתרבותחזותיתואמנויותהבמה": "APPRAISAL",
-    "תיאור האוסף בפרויקט תרבות חזותית ואמנויות הבמה": "APPRAISAL",
     "סוג אוסף": "COLLECTION_TYPE",
     "היקף": "EXTENT",
     "היקף החומר הפיזי טרום מיון": "EXTENT",

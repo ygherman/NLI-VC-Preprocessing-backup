@@ -64,13 +64,5 @@ col_name
         self.assertEqual(result, True)
 
 
-class TestCheck_date_values_in_row(TestCase):
-    def test_check_date_values_in_row(self):
-        from VC_collections.marc import extract_years_from_text
-
-        self.assertEquals(extract_years_from_text("1930/1990"), ["1930", "1990"])
-        self.assertEquals(extract_years_from_text("[בערך 1940-2018]"), ["1940", "2018"])
-
-
 if __name__ == "__main__":
     main()

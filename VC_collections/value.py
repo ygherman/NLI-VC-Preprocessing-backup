@@ -23,7 +23,6 @@ VERSION
     $
 """
 import re
-import sys
 from datetime import datetime
 
 import dateutil
@@ -153,32 +152,3 @@ def format_cat_date(df):
     )
 
     return df
-
-
-def extract_years_from_text(date_text):
-    years = re.findall(r"(\d{4})", str(date_text))
-    years = sorted([year for year in years])
-
-    if len(years) < 1:
-        return None
-    elif len(years) == 1:
-        return [years[0], years[0]]
-    else:
-        return years
-
-
-def check_date_values_in_row(date_start, date_end, date_free_text):
-    if date_start != "" and date_end != "":
-        return date_start, date_end
-    elif date_free_text != "":
-        date_text = date_free_text
-    else:
-        sys.stderr(f"[DATE] Problem with date columns - please check!")
-        sys.exit()
-
-    years = extract_years_from_text(date_text)
-    if years is None:
-        return None, None
-    elif len(years) == 1:
-        return years[0], years[0]
-    return years[0], years[1]

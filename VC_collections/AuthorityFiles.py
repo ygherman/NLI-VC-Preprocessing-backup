@@ -44,16 +44,16 @@ def create_df_from_gs(spreadsheet, worksheet):
     """
     # create a dataframe from the given worksheet
     sheet = spreadsheet.worksheet(worksheet)
-    dict_gs = sheet.get_all_records()
-    headers = dict_gs[0].keys()
-    headers = [header.strip() for header in headers]
-
+    dict_gs = sheet.get_all_records(head=1)
+    #     pprint.pprint(dict_gs)
     df = pd.DataFrame(dict_gs)
+    cols = list(dict_gs[1].keys())
+    #     print(cols)
 
     # remove empty rows
     df.replace(np.nan, "", inplace=True)
 
-    return df, headers
+    return df, cols
 
 
 def order_media_format(df_media_format_auth):
@@ -85,9 +85,10 @@ def order_media_format(df_media_format_auth):
 
     media_format_auth = df_media_format_auth
 
-    media_format_auth_mapping = media_format_auth[
-        ["MARC21 534", "MEDIA_FORMAT", "MARC 338 rdacarrier", "MARC 337 rdamedia"]
-    ]
+    media_format_auth_mapping = media_format_auth.loc[
+                                :, ["MARC21 534", "MEDIA_FORMAT", "MARC 338 rdacarrier", "MARC 337 rdamedia"]
+                                ]
+
     media_format_mapping_dict = pd.Series(
         media_format_auth_mapping["MARC21 534"].values,
         index=media_format_auth["MEDIA_FORMAT"].values,

@@ -11,22 +11,17 @@ def get_google_drive_api_path(path):
         if x.is_dir() and x != path:
             yield x
 
-
 def get_google_drive_credentials():
-    scope = [
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive.file",
-        "https://www.googleapis.com/auth/drive",
-    ]
+    scope = ['https://www.googleapis.com/auth/spreadsheets',
+             "https://www.googleapis.com/auth/drive.file",
+             "https://www.googleapis.com/auth/drive"]
 
     for f in get_google_drive_api_path(Path.cwd()):
         if "google_drive" in f.name:
             clientsecret_file_path = f
             break
     try:
-        return ServiceAccountCredentials.from_json_keyfile_name(
-            clientsecret_file_path / "client_secret.json", scope
-        )
+        return ServiceAccountCredentials.from_json_keyfile_name(clientsecret_file_path / 'client_secret.json', scope)
     except OSError as e:
         sys.stderr.write("problem with creds!")
         return None
@@ -41,11 +36,7 @@ def connect_to_google_drive():
 
 
 def find_catalog_gspread(client, collection_id):
-    files = [
-        file
-        for file in client.list_spreadsheet_files()
-        if collection_id.lower() in file["name"].lower()
-    ]
+    files = [file for file in client.list_spreadsheet_files() if collection_id.lower() in file['name'].lower()]
     if len(files) == 0:
-        sys.stderr.write(f"no file for {collection_id} found in google drive \n")
+        sys.stderr.write(f'no file for {collection_id} found in google drive \n')
         return client, input("if you have the ID of the file, please enter manually: ")

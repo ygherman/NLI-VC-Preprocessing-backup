@@ -5,7 +5,7 @@ import pprint
 import numpy as np
 import pandas as pd
 
-from VC_collections.fieldmapper import field_types_dict
+from VC_collections.fieldmapper import *
 
 
 def column_exists(df, col):

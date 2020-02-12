@@ -28,14 +28,10 @@ import sys
 
 import pandas as pd
 
-# ROOTID finder
 from VC_collections.columns import drop_col_if_exists
 from VC_collections.value import find_nth
 
-# from value import find_nth
-# from VC_collections.columns import drop_col_if_exists
-# from VC_collections.value import find_nth
-
+# ROOTID finder
 ROOTID_finder = lambda x: x[: find_nth(x, "-", x.count("-"))] if "-" in x else ""
 
 
@@ -80,10 +76,8 @@ def get_alma_sid(custom04_path, collectionID, df):
     :return: the Dataframe with a system number column
     :return:
     """
-    try:
-        alma_sysno_file = os.path.join(custom04_path, collectionID + "_alma_sysno.xlsx")
-    except:
-        sys.stderr(f"There is no alma_sysno_file File fir collection: {collectionID}.")
+    alma_sysno_file = os.path.join(custom04_path, collectionID + "_alma_sysno.xlsx")
+    assert os.path.isfile(alma_sysno_file), "There is no such File: alma_sysno_file"
 
     # parse sysno file
     xl2 = pd.ExcelFile(alma_sysno_file)
@@ -102,13 +96,13 @@ def get_alma_sid(custom04_path, collectionID, df):
     df = df.merge(df_alma, on="סימול", how="left")
 
     # todo change this to logger
-
+    print(f"these MMSIDs were not found\n", df[df["MMS ID"].isna()])
     df = drop_col_if_exists(df, "911_1")
     try:
         df["MMS ID"] = df["MMS ID"].astype(str)
     except ValueError:
         sys.stderr.write(
-            f"There is a missing MMS ID at {df.loc[df['MMS ID'].isna()==True, 'סימול'].index}."
+            f"There is a missing MMS ID at {df.loc[df['MMS ID'].isna() == True, 'סימול']}."
             f"\n Please update the Alma MMS ID for that call number and run again!"
         )
         sys.exit()
@@ -122,22 +116,20 @@ def get_alma_sid(custom04_path, collectionID, df):
     return df, df_alma
 
 
-def get_branch_colletionID(
-    branch: str = "", collectionID: str = "", batch: bool = False
-) -> (str, str, str):
+def get_branch_colletionID(branch="", collectionID="", batch=False):
     """
         Get Branch and CollectionID
     :param branch: the branch (Architect, Dance, Design or Theater
     :param collectionID: The collection ID
     :param batch: if the calling results from a batch process
-    :return: tuple of 3 containing CMS, branch and the collection ID
+    :return: The branch and the collection ID
     """
     if not batch:
         while True:
-            # CMS = input(
-            #     "Preprecessing for Aleph - write 'Aleph'; Preprocessing for Alma - write 'Alma"
-            # )
-            CMS = "Alma".lower()
+            CMS = input(
+                "Preprecessing for Aleph - write 'Aleph'; Preprocessing for Alma - write 'Alma"
+            )
+            CMS = CMS.lower()
 
             branch = input(
                 "Please enter the name of the Branch (Architect, Design, Dance, Theater): "
@@ -183,10 +175,13 @@ def get_root_index_and_title(df, index):
         sys.exit()
 
     root_call_number = ROOTID_finder(df.loc[index, "סימול"])
-    root_index = df.index[df["סימול"] == root_call_number].tolist()[0]
+    try:
+        root_index = df.index[df["סימול"] == root_call_number.strip()].tolist()[0]
+    except:
+        sys.exit()
 
-    if root_call_number in check_col_series:
-        root_index = df[df["סימול"] == root_call_number].index.tolist()[0]
+    if root_call_number.strip() in check_col_series:
+        root_index = df[df["סימול"] == root_call_number.strip()].index.tolist()[0]
         title = df.loc[root_index, "24510"].strip("$$a")
     else:
         logger.error(
