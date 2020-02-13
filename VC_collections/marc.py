@@ -1073,7 +1073,9 @@ def create_date_format(string_date):
         "%d/%m/%Y",
         "%m/%d/%Y",
         "%m/%d/%Y %H:%M:%S",
-        "%Y%m%d %H:%M"
+        "%Y%m%d %H:%M",
+        "%d/%m/%Y %H:%M"
+
     ]
     i = 0
     while True:
