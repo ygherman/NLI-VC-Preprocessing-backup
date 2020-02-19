@@ -186,8 +186,8 @@ def get_root_index_and_title(df, index):
     root_index = df.index[df["סימול"] == root_call_number].tolist()[0]
 
     if root_call_number in check_col_series:
-        root_index = df[df["סימול"] == root_call_number].index.tolist()[0]
-        title = df.loc[root_index, "24510"].strip("$$a")
+        root_index = df.loc[root_call_number, "mms_id"]
+        title = df.loc[root_call_number, "24510"].strip("$$a")
     else:
         logger.error(
             f"ROOT MMS ID of {index} is not in table - check table! and run again"

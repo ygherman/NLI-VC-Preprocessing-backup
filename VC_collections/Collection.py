@@ -267,7 +267,7 @@ def map_field_names_to_english(col_names: list) -> list:
             print(
                 "columns not mapped:",
                 "\n".join(
-                    [f"{x}: {field_mapper.get(x)}" for x in enumerate(new_col_names)]
+                    [f"{x}: {field_mapper.get(x)}" for x in col_names]
                 ),
             )
 

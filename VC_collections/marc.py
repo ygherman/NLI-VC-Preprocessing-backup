@@ -307,7 +307,7 @@ def create_MARC_561(df):
     """
     if "סימול מקורי" in list(df.columns.values):
         df["561"] = df["סימול מקורי"].apply(
-            lambda x: "$$a" + str(x) if str(x) != "" else ""
+            lambda x: "$$aסימול מקורי: " + str(x) if str(x) != "" else ""
         )
         df = drop_col_if_exists(df, "סימול מקורי")
     return df
@@ -1116,6 +1116,7 @@ def construct_933(df):
         df_explode_933[col] = df_explode_933[col].map(
             Authority_instance.cataloger_name_mapper
         )
+    df_explode_933 = df_explode_933.replace(np.nan, "")
     df = pd.concat([df, df_explode_933], axis=1)
 
     # TODO rewrite this loop - too messy
@@ -1635,3 +1636,9 @@ def create_MARC_final_table(collection):
     )
 
     return collection
+
+
+def create_MARC_255(df):
+    if "קנה מידה" in list(df.columns):
+        df["255"] = df["קנה מידה"].map(lambda x: "$$aקנה מידה: [" + x + "]" if x != "" else "")
+        return df

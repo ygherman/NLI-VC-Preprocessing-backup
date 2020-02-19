@@ -108,6 +108,10 @@ def main():
         collection.df_final_data
     )
 
+    # create 255 - scale field
+    logger.info("[MARC 255] Creating")
+    collection.df_final_data = marc.create_MARC_255(collection.df_final_data)
+
     # create 260 (DATE fields, and PUBLICATION_COUNTRY) (מדינת פרסום, תאריך מנורמל מוקדם, תאריך מנורמל מאוחר)
     logger.info("[MARC 260] Creating")
 
