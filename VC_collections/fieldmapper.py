@@ -266,7 +266,6 @@ collection_field_mapper = {
     "חומריםקשורים": "RELATED_MATERIALS",
     "הערות - גלוי למשתמש קצה": "NOTES",
     "הערותגלוי למשתמש קצה": "NOTES",
-
     "הערות - לא גלוי למשתמש קצה": "NOTES_HIDDEN",
     "שם הרושם": "CATALOGUER",
     "תאריך הרישום": "DATE_CATALOGING",

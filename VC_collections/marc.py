@@ -20,7 +20,7 @@ from VC_collections.columns import (
 )
 from VC_collections.explode import explode_col_to_new_df
 from VC_collections.project import get_root_index_and_title
-from VC_collections.value import clean_text, find_nth, replace_lst_dict
+from VC_collections.value import clean_text, find_nth, replace_lst_dict, is_multi_value
 
 # ROOTID finder
 ROOTID_finder = lambda x: x[: find_nth(x, "-", x.count("-"))] if "-" in x else ""
@@ -45,13 +45,13 @@ def create_MARC_091(df):
     return df
 
 
-def create_MARC_911(df):
+def create_MARC_093(df):
     """add prefix '$$a' to the value
 
     :param df = dataframe
 
     """
-    df["911"] = df["סימול"].apply(lambda x: "$$a" + x)
+    df["093"] = df["סימול"].apply(lambda x: "$$c" + x)
 
     collection_id = df.loc[df[df["רמת תיאור"] == "Section Record"].index[0], "סימול"]
 
@@ -60,10 +60,8 @@ def create_MARC_911(df):
         collection_id, "שם הארכיון באנגלית"
     ]
 
-    df["911_1"] = df["911"] + "$$c" + collection_name_heb
-    df["093_1"] = df["911_1"]
-    df["911_2"] = df["911"] + "$$c" + collection_name_eng
-    df["093_2"] = df["911_2"]
+    df["093_1"] = df["093"] + "$$d" + collection_name_heb
+    df["093_2"] = df["093"] + "$$d" + collection_name_eng
 
     df = drop_col_if_exists(df, "911")
     df = drop_col_if_exists(df, "שם האוסף")
@@ -541,6 +539,35 @@ def create_MARC_700_710(df):
     return df
 
 
+def construct_MARC_300(words_list):
+    nums = ''
+    text = ''
+    for word in words_list:
+        if word[0].isdigit():
+            nums += word
+        else:
+            text += word + ' '
+    print(f'$$a{nums.strip()}$$f{text.rstrip()}')
+    return f'$$a{nums.strip()}$$f{text.rstrip()}'
+
+
+def split_MARC_300(row):
+    val_300 = ''
+    if is_multi_value(str(row)):
+        text = str(row).split(';')
+        for val in text:
+            words = val.split()
+            val_300 += ";" + construct_MARC_300(words)
+    else:
+        words = str(row).split()
+        val_300 = ';' + construct_MARC_300(words)
+
+    if val_300 == ';':
+        return ''
+    else:
+        return val_300
+
+
 def create_MARC_300(df):
     """
         converts the ['רמת תיאור'] field to MARC21 351 $c encoded field.
@@ -560,8 +587,9 @@ def create_MARC_300(df):
         print("col variable not defined")
         pass
     else:
-        df["300"] = df[col].apply(lambda x: "$$c" + str(x))
 
+        df["300"] = df[col].apply(split_MARC_300)
+        df = explode_col_to_new_df(df, '300')
         df = drop_col_if_exists(df, col)
 
     return df
@@ -1074,8 +1102,7 @@ def create_date_format(string_date):
         "%m/%d/%Y",
         "%m/%d/%Y %H:%M:%S",
         "%Y%m%d %H:%M",
-        "%d/%m/%Y %H:%M"
-
+        "%d/%m/%Y %H:%M",
     ]
     i = 0
     while True:
@@ -1097,9 +1124,13 @@ def create_date_format(string_date):
 
 def construct_921(df):
     df["921"] = df["921"].map(Authority_instance.cataloger_name_mapper)
-    df["921"] = (
-        "$$a" + df["921"].map(str) + " " + df["תאריך הרישום"].apply(create_date_format)
-    )
+
+    try:
+        df["921"] = (
+                "$$a" + df["921"].map(str) + " " + df["תאריך הרישום"].apply(create_date_format)
+        )
+    except:
+        sys.exit()
     df["921"].apply(lambda x: "$$a" + x)
     return df
 
@@ -1578,17 +1609,20 @@ def create_907_value(dict_907):
     return "$$" + "$$".join(words)
 
 
-def add_MARC_907(collection):
-
+def lookup_rosetta_file(digitization_path, collection_id):
     rosetta_file_path = str(
-        collection.digitization_path / "ROS" / (collection.collection_id + "_907.xml")
+        digitization_path / "ROS" / (collection_id + "_907.xml")
     )
     if not Path.exists(Path(rosetta_file_path)):
         sys.stderr.write(
             f"[ERROR] no file at {rosetta_file_path} - please add file and run again!"
         )
         sys.exit()
+    return rosetta_file_path
 
+
+def add_MARC_907(collection):
+    rosetta_file_path = lookup_rosetta_file(collection.digitization_path, collection.collection_id)
     rosetta_file = minidom.parse(rosetta_file_path)
     df = collection.df_final_data.reset_index(drop=True).set_index("mms_id")
     rosetta_dict = create_907_dict(rosetta_file)
@@ -1614,6 +1648,51 @@ def add_MARC_907(collection):
     return collection
 
 
+def create_035_dict(file):
+    d = {}
+    for record in file.getElementsByTagName("record"):
+        mms_id = next(
+            e.childNodes[0].data
+            for e in record.getElementsByTagName("controlfield")
+            if e.attributes["tag"].value == "001"
+        )
+        dd = {}
+        for e in record.getElementsByTagName("datafield"):
+            if e.attributes["tag"].value == "035":
+                for sb in e.getElementsByTagName("subfield"):
+                    dd["035"] = "$$a" + sb.attributes["code"].value + sb.childNodes[0].data
+        d[mms_id] = dd
+    return d
+
+
+def add_MARC_035(collection):
+    rosetta_file_path = lookup_rosetta_file(collection.digitization_path, collection.collection_id)
+    rosetta_file = minidom.parse(rosetta_file_path)
+    dict_035 = create_035_dict(rosetta_file)
+
+    df = collection.df_final_data.reset_index(drop=True).set_index("mms_id")
+
+    df["035"] = ""
+    for index, row in df.iterrows():
+        try:
+            if index == np.nan:
+                sys.stderr.write(f"this index: {index} for {row['סימול']} is missing")
+            elif str(index) not in dict_035.keys():
+                sys.stderr.write(
+                    f"there is no 035 field for : {index}, for call number {row['סימול']}\n."
+                )
+                sys.exit()
+            elif len(dict_035[str(index)]) == 0:
+                continue
+            else:
+                df.loc[index, "035"] = create_907_value(dict_035[str(index)])
+        except:
+            pass
+    collection.df_final_data = df
+
+    return collection
+
+
 def add_MARC_597(collection):
     df_597 = Authority_instance.df_credits
     collection.df_final_data["597"] = (
@@ -1625,6 +1704,8 @@ def add_MARC_597(collection):
 
 
 def create_MARC_final_table(collection):
+    logger = logging.getLogger()
+    logger.info(f'[MARCXML] create final XML file for {collection.collection_id}')
     df_final_cols = [
         x for x in list(collection.df_final_data.columns) if x[0].isdigit()
     ] + ["LDR"]
@@ -1632,7 +1713,7 @@ def create_MARC_final_table(collection):
 
     counter, run_time = collection.create_MARC_XML()
     sys.stderr.write(
-        "%s total records written to file in %s seconds.\n\n" % (counter, run_time)
+        f"{counter} total records written to file in {run_time} seconds.\n\n"
     )
 
     return collection
@@ -1640,5 +1721,27 @@ def create_MARC_final_table(collection):
 
 def create_MARC_255(df):
     if "קנה מידה" in list(df.columns):
-        df["255"] = df["קנה מידה"].map(lambda x: "$$aקנה מידה: [" + x + "]" if x != "" else "")
+        df["255"] = df["קנה מידה"].map(
+            lambda x: "$$aקנה מידה: [" + x + "]" if x != "" else ""
+        )
         return df
+
+
+def create_MARC_650_branch(collection):
+    """
+        Create subject for the Project 4 branches: Architect, Dance, Design, Theater in MARC field 650
+        according to the branch  attribute of the collection.
+    :param collection: The collection object
+    :return: the collection object with the df_final_data, with the added 650 MARC field
+    """
+    if collection.branch == "VC-Architect":
+        # last_index_of_reoccurring_column(collection.df_final_data, "650")
+        collection.df_final_data["650"] = "$$aArchitecture$$zIsrael"
+    elif collection.branch == "VC-Dance":
+        collection.df_final_data["650"] = "$$aDance$$zIsrael"
+    elif collection.branch == "VC-Design":
+        collection.df_final_data["650"] = "$$aDesign$$zIsrael"
+    elif collection.branch == "VC-Theater":
+        collection.df_final_data["650"] = "$$aTheater$$zIsrael"
+
+    return collection

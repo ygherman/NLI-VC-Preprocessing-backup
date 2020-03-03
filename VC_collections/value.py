@@ -182,3 +182,7 @@ def check_date_values_in_row(date_start, date_end, date_free_text):
     elif len(years) == 1:
         return years[0], years[0]
     return years[0], years[1]
+
+
+def is_multi_value(val):
+    return ';' in str(val)

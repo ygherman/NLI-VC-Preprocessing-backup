@@ -86,7 +86,14 @@ def get_alma_sid(custom04_path, collectionID, df):
         sys.stderr(f"There is no alma_sysno_file File fir collection: {collectionID}.")
 
     # parse sysno file
-    xl2 = pd.ExcelFile(alma_sysno_file)
+    try:
+        xl2 = pd.ExcelFile(alma_sysno_file)
+    except FileNotFoundError:
+        sys.stderr.write(
+            f"The file does [{alma_sysno_file}] not exist in the custom04\Alma directory. "
+            f"Search or create the file and restart process."
+        )
+        sys.exit()
     df_alma = xl2.parse(0)
     df_alma = df_alma.applymap(str)
 

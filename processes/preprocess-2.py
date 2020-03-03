@@ -51,9 +51,9 @@ def main():
     logger.info("[911/093] Creating 911/093 MARC field for Call Number")
     df = collection.df_final_data.T.drop_duplicates().T
     df.rename(columns={df.columns[0]: "mms_id"}, inplace=True)
-    collection.df_final_data = marc.create_MARC_911(collection.df_final_data)
-    collection.df_final_data.index = collection.df_final_data["911_1"].apply(
-        lambda x: x[x.find("$$a") + 3 : x.find("$$c")]
+    collection.df_final_data = marc.create_MARC_093(collection.df_final_data)
+    collection.df_final_data.index = collection.df_final_data["093_1"].apply(
+        lambda x: x[x.find("$$c") + 3: x.find("$$d")]
     )
 
     # Add MMS id to catalog (מספר מערכת עלמא)
@@ -83,12 +83,12 @@ def main():
     # create 110 and 100 (FIRST CREATORS CORPS and PERS) (יוצר ראשון - איש/ יוצר ראשון = מוסד)
     collection.df_final_data = marc.create_MARC_100_110(collection.df_final_data)
 
-    # create 700 and 710 (added creators PERS and CORPS) (יוצרים נוספים - אישים/יוצרים נוספים - מוסד)
-    collection.df_final_data = marc.create_MARC_700_710(collection.df_final_data)
-
     # create 300 (EXTENT) (היקף)
     logger.info("[MARC 300] Creating ")
     collection.df_final_data = marc.create_MARC_300(collection.df_final_data)
+
+    # create 700 and 710 (added creators PERS and CORPS) (יוצרים נוספים - אישים/יוצרים נוספים - מוסד)
+    collection.df_final_data = marc.create_MARC_700_710(collection.df_final_data)
 
     # create 655 (ARCHIVAL_MATERIAL) (סוג חומר)
     logger.info("[MARC 655] Creating ")
@@ -179,17 +179,24 @@ def main():
     collection.df_final_data = marc.create_MARC_534(collection.df_final_data)
 
     # create MARC 590
-    logger.info("[MARC 590] Creating MARC RDA 590 ")
+    logger.info("[MARC 590] Creating MARC  590 ")
     collection.df_final_data = marc.create_MARC_590(collection.df_final_data)
 
     # create MARC 561
-    logger.info("[MARC 590] Creating MARC RDA 561 ")
+    logger.info("[MARC 590] Creating MARC  561 ")
     collection.df_final_data = marc.create_MARC_561(collection.df_final_data)
 
     collection.temp_preprocess_file(stage="POST")
 
-    # TODO ADD 907 (#Rossetta link)
+    #  ADD 907 (#Rossetta link)
     collection = marc.add_MARC_907(collection)
+
+    # recreate 035 MARC field from the ROS\[collection_id]_907.xml file
+    collection = marc.add_MARC_035(collection)
+
+    # create MARC 650 for project branches
+    logger.info("[MARC 650] create MARC 650 subject heading according to collection's branch")
+    collection = marc.create_MARC_650_branch(collection)
 
     # create MARC Catalog
     marc.create_MARC_final_table(collection)

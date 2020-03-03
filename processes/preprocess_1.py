@@ -432,15 +432,32 @@ def check_date_columns(df):
         | (df["DATE_END"].isna())
     )
     test_df = df[mask]
-    for index, row in test_df.iterrows():
-        if row["DATE"] == "":
-            sys.stderr(f"[ERROR]  No DATE Values! Please check data at index: {index}")
-        else:
-            early_date, late_date = extract_years_from_text(row["DATE"])
+    if len(test_df) != 0:
+        for index, row in test_df.iterrows():
+            if row["DATE"] == "":
+                sys.stderr(f"[ERROR]  No DATE Values! Please check data at index: {index}")
+            else:
+                try:
+                    early_date, late_date = extract_years_from_text(row["DATE"])
+                except:
+                    sys.stderr.write(f"Problem with index {index}")
 
-            if early_date is not None and late_date is not None:
-                df.loc[index, "DATE_START"] = early_date
-                df.loc[index, "DATE_END"] = late_date
+                if early_date is not None and late_date is not None:
+                    df.loc[index, "DATE_START"] = early_date
+                    df.loc[index, "DATE_END"] = late_date
+    return df
+
+
+def check_cataloging_date(df: pd.DataFrame) -> pd.DataFrame:
+    """
+
+    :param df:
+    :return:
+    """
+
+    mask = df['CATALOGING_DATE'].apply(pd.to_datetime, errors='coerce').isnull().any()
+    print(df.loc[:, mask])
+
     return df
 
 
@@ -560,6 +577,9 @@ def main():
         authority_Excelfile(collection.full_catalog, "MEDIUM_FORMAT"),
         "MEDIUM_FORMAT",
     )
+
+    # logger.info(f"[DATE_CATALOGING] Checking and Validating DATE_CATALOGING column")
+    # collection.full_catalog = check_cataloging_date(collection.full_catalog)
 
     logger.info("Final file: creating final file")
     collection = create_final_file(collection)

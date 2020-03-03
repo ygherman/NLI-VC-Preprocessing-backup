@@ -266,9 +266,7 @@ def map_field_names_to_english(col_names: list) -> list:
         if "NO MAPPING" in new_col_names:
             print(
                 "columns not mapped:",
-                "\n".join(
-                    [f"{x}: {field_mapper.get(x)}" for x in col_names]
-                ),
+                "\n".join([f"{x}: {field_mapper.get(x)}" for x in col_names]),
             )
 
     except:
@@ -702,16 +700,12 @@ class Collection:
                 field = col[:3]
 
                 # extract indicators
-                if col.find("_") == -1 and len(col) < 5:
-                    ind = [" ", " "]
-                elif col.find("_") == 3:
-                    ind = [" ", " "]
-                elif col.find("_") == 4:
-                    ind = [col[3], " "]
-                elif col.find("_") == 5:
-                    ind = [" ", col[4]]
+                if col.find('_') == -1:
+                    col_name = "{:<5}".format(col)
+                    ind = [col_name[3], col_name[4]]
                 else:
-                    ind = [col[3], col[4]]
+                    col_name = "{:<5}".format(col[:col.find('_')])
+                    ind = [col_name[3], col_name[4]]
 
                 # extract sub-fields
                 subfields_data = list()

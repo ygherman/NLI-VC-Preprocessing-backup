@@ -348,6 +348,7 @@ def map_role_to_relator(role, df, lang, mode="PERS"):
             return df.loc[
                 df[df["CREATOR_CROPS_ROLE"] == role].index.item(), "RELATOR_HEB"
             ]
+
         if lang == "eng":
             return df.loc[
                 df[df["CREATOR_CROPS_ROLE"] == role].index.item(), "RELATOR_ENG"
