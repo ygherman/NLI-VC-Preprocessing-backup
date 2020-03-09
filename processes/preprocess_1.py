@@ -255,35 +255,32 @@ def create_authorities_report(collection, authority_type):
     df_creator = df_creator.reset_index()
     df_access = df_access.reset_index()
 
-    for col in ["Name", "Role", "Type"]:
-        df_creator[col] = df_creator["index"].apply(
-            lambda x: find_name(x).strip() if isinstance(x, str) else x
-        )
-        df_access[col] = df_access["index"].apply(
-            lambda x: find_name(x).strip() if isinstance(x, str) else x
-        )
-
-    if authority_type == "PERS" or authority_type == "CORPS":
-        df_creator["Type"] = "CREATOR"
-
+    df_creator["Name"] = df_creator["index"].apply(
+        lambda x: find_name(x).strip() if isinstance(x, str) else x
+    )
+    df_access["Name"] = df_access["index"].apply(
+        lambda x: find_name(x).strip() if isinstance(x, str) else x
+    )
+    # df_access["Role"] = df_access["index"].apply(
+    #     lambda x: find_role(x).strip() if isinstance(x, str) else x
+    # )
+    df_creator["Type"] = "CREATOR"
     df_access["Type"] = col
 
     df_authority = pd.concat([df_creator, df_access], sort=True)
     df_authority["Count"] = df_authority.apply(lambda row: len(row["UNITID"]), axis=1)
+    df_authority.where(df_authority["Name"] != '').dropna(how="all")
 
     df_authority = pd.concat(
         [
             df_authority["Name"],
             df_authority["Role"],
-            df_authority["Type"],
             df_authority["Count"],
             df_authority["UNITID"].apply(pd.Series),
         ],
         axis=1,
     )
 
-    if authority_type == "GEO":
-        df_authority = df_authority[df_authority["Type"] != "CREATOR"]
 
     unique_authority_filename = collection.authorities_path / (
         collection.collection_id
@@ -357,24 +354,36 @@ def create_final_file(collection):
     return collection
 
 
-def update_df_in_gdrive(collection, copy=False):
+def update_df_in_gdrive(collection, worksheet_name="קטלוג סופי", copy=False):
     credentials = get_google_drive_credentials()
-    worksheet_name = "קטלוג סופי"
-    d2g.upload(
-        collection.full_catalog.applymap(str),
-        collection.google_sheet_file_id,
-        worksheet_name,
-        credentials=credentials,
-        row_names=True,
-    )
-    if copy:
-        client = connect_to_google_drive()
-        spreadsheet = client.copy(
+    if worksheet_name == "קטלוג סופי":
+        d2g.upload(
+            collection.full_catalog.applymap(str),
             collection.google_sheet_file_id,
-            collection.collection_id + "_Final_to_Alma_" + collection.dt_now,
+            worksheet_name,
+            credentials=credentials,
+            row_names=True,
         )
-        collection.google_sheet_file_id = spreadsheet.id
-        collection.create_catalog_metadata_file()
+        gc = gspread.authorize(credentials)
+        sh = gc.open_by_key(collection.google_sheet_file_id)
+        if 'מספרי מערכת חסרים' in sh.worksheets():
+            sh.del_worksheet('מספרי מערכת חסרים')
+        if copy:
+            client = connect_to_google_drive()
+            spreadsheet = client.copy(
+                collection.google_sheet_file_id,
+                collection.collection_id + "_Final_to_Alma_" + collection.dt_now,
+            )
+            collection.google_sheet_file_id = spreadsheet.id
+            collection.create_catalog_metadata_file()
+    else:
+        d2g.upload(
+            collection.missing_records.applymap(str),
+            collection.google_sheet_file_id,
+            worksheet_name,
+            credentials=credentials,
+            row_names=True,
+        )
 
 
 # TODO
@@ -392,6 +401,9 @@ def add_MMSIDs_to_full_catalog(collection):
 
 def add_normal_dates_to_section_record(df, collection_id):
     df = df.replace(r"^\s*$", np.nan, regex=True)
+    if not column_exists(df, "DATE_START") and not column_exists(df, "DATE_START"):
+        df["DATE_START"] = ''
+        df["DATE_END"] = ''
     if pd.isnull(df.loc[collection_id, "DATE_START"]) and pd.isnull(
         df.loc[collection_id, "DATE_END"]
     ):
@@ -584,11 +596,20 @@ def main():
     logger.info("Final file: creating final file")
     collection = create_final_file(collection)
 
-    collection.full_catalog, df_alma = get_alma_sid(
+    collection.full_catalog, df_alma, df_missing_records_in_alma = get_alma_sid(
         collection.aleph_custom04_path,
         collection.collection_id,
         collection.full_catalog,
     )
+
+    if df_missing_records_in_alma is not None:
+        logger.error("Not all records have MMS ID - please create alma records for missing MMS IDs!")
+
+        collection.missing_records = drop_col_if_exists(df_missing_records_in_alma.reset_index().set_index("סימול"),
+                                                        '001')
+        update_df_in_gdrive(collection, worksheet_name="מספרי מערכת חסרים", copy=False)
+
+
     logger.info(
         f"updating the preprocessed DataFrame in Google Sheets - "
         f"as final copy: {collection.collection_id}_Final_to_alma_{collection.dt_now}"

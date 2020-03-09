@@ -100,9 +100,9 @@ def main():
 
     ####################################################
     ### CREATE  COPYRIGHT FIELDS WITH DEFAULT VALUES ###
-    ### fields: 542, 540, 506
+    ### fields: 939, 903, 952
     ####################################################
-    logger.info("[MARC 542, 540, 506] Creating default copyright fields")
+    logger.info("[MARC 939, 903, 952] Creating default copyright fields")
 
     collection.df_final_data = marc.create_MARC_defualt_copyright(
         collection.df_final_data
@@ -183,7 +183,7 @@ def main():
     collection.df_final_data = marc.create_MARC_590(collection.df_final_data)
 
     # create MARC 561
-    logger.info("[MARC 590] Creating MARC  561 ")
+    logger.info("[MARC 561] Creating MARC  561 ")
     collection.df_final_data = marc.create_MARC_561(collection.df_final_data)
 
     collection.temp_preprocess_file(stage="POST")

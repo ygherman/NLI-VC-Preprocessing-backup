@@ -117,10 +117,11 @@ def create_authority_file(df, col_name, delimiter=";"):
     return authority_list
 
 
-def create_authority(df, index, frame, authority_list):
+def create_authority(df: pd.DataFrame, index, frame: str, authority_list: dict):
     """
     Creates a dictionary of all the authorities in a Dataframe
 
+    :return: Dictionary of dictionaris
     :param authority_list: the entire authority dictionary of the DataFrame
     :param frame: the value of the cell
     :param index: index of the frame
@@ -133,9 +134,9 @@ def create_authority(df, index, frame, authority_list):
         authority_list[frame] = {}
         authority_list[frame]["UNITID"] = []
     if "[" in frame:
-        authority_list[frame]["role"] = find_role(frame)
+        authority_list[frame]["Role"] = find_role(frame)
     else:
-        authority_list[frame]["role"] = ""
+        authority_list[frame]["Role"] = ""
 
     authority_list[frame]["UNITID"].append(df.loc[index, "UNITID"])
 
@@ -638,8 +639,14 @@ def check_values_against_cvoc(df, col_name, new_values):
         df[col_name], vals_to_check, new_values
     )
     if len(values_not_found) > 0:
-        print("These values were not found: ", values_not_found)
+        print(
+            f"Total of {len(vals_to_check) - len(values_not_found)} were fixed."
+            f"Total of {len(values_not_found)} values were not found: {values_not_found}"
+        )
     else:
-        logger.info(f"[{col_name.upper()}] Values corrected in column {col_name}")
+        logger.info(
+            f"[{col_name.upper()}] Values corrected in column {col_name} \n"
+            f"Total of {len(vals_to_check) - len(values_not_found)} were fixed."
+        )
 
     return df

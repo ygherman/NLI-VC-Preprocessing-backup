@@ -70,6 +70,10 @@ def get_aleph_sid(custom04_path, collectionID, df):
 
 
 # TODO refactor this function
+def all_records_in_alma(df):
+    return len(df[df['_merge'] == 'left_only']) == 0
+
+
 def get_alma_sid(custom04_path, collectionID, df):
     """
         Get Aleph sys ID
@@ -83,7 +87,7 @@ def get_alma_sid(custom04_path, collectionID, df):
     try:
         alma_sysno_file = os.path.join(custom04_path, collectionID + "_alma_sysno.xlsx")
     except:
-        sys.stderr(f"There is no alma_sysno_file File fir collection: {collectionID}.")
+        sys.stderr(f"There is no alma_sysno_file File for collection: {collectionID}.")
 
     # parse sysno file
     try:
@@ -104,10 +108,10 @@ def get_alma_sid(custom04_path, collectionID, df):
     # rename columns
     df_alma.columns = ["MMS ID"]
 
+
     # convert MMS ID col to string
 
-    df = df.merge(df_alma, on="סימול", how="left")
-
+    df = df.merge(df_alma, on="סימול", how="left", indicator=True)
     # todo change this to logger
 
     df = drop_col_if_exists(df, "911_1")
@@ -126,7 +130,14 @@ def get_alma_sid(custom04_path, collectionID, df):
     df.index.name = "001"
     df = drop_col_if_exists(df, "911_1")
 
-    return df, df_alma
+    if all_records_in_alma(df):
+        df = drop_col_if_exists(df, '_merge')
+        return df, df_alma, None
+    else:
+        new_records_to_alma = df[df['_merge'] == 'left_only']
+        new_records_to_alma = drop_col_if_exists(new_records_to_alma, '_merge')
+
+    return df, df_alma, new_records_to_alma
 
 
 def get_branch_colletionID(
@@ -190,7 +201,7 @@ def get_root_index_and_title(df, index):
         sys.exit()
 
     root_call_number = ROOTID_finder(df.loc[index, "סימול"])
-    root_index = df.index[df["סימול"] == root_call_number].tolist()[0]
+    # root_index = df.index[df["סימול"] == root_call_number].tolist()[0]
 
     if root_call_number in check_col_series:
         root_index = df.loc[root_call_number, "mms_id"]

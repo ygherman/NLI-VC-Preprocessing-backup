@@ -117,8 +117,8 @@ def create_MARC_351_LDR(df):
     $c - Hierarchical level (NR)
 
     Also creates MARC LDR  based on hierarchical level.
-            - 00000npd^a22^^^^^^a^4500  - for file and item level records
-            - 00000npc^a22^^^^^^^^4500 - for all other levels
+            - 0000npd^a22^^^^^^a^4500  - for file and item level records
+            - 0000npc^a22^^^^^^^^4500 - for all other levels
     :param df: The original Dataframe
     :return:The Dataframe with the new 351 field
     """
@@ -126,9 +126,9 @@ def create_MARC_351_LDR(df):
     def define_LDR(hier):
 
         if hier == "File Record" or hier == "Item Record":
-            return "00000npd#a22######a#4500"
+            return "0000npd#a22######a#4500"
         else:
-            return "00000npc#a22########4500"
+            return "0000npc#a22########4500"
 
     if column_exists(df, "רמת תיאור"):
         col = "רמת תיאור"
@@ -553,7 +553,9 @@ def construct_MARC_300(words_list):
 
 def split_MARC_300(row):
     val_300 = ''
-    if is_multi_value(str(row)):
+    if str(row) == '':
+        return val_300
+    elif is_multi_value(str(row)):
         text = str(row).split(';')
         for val in text:
             words = val.split()
@@ -562,7 +564,7 @@ def split_MARC_300(row):
         words = str(row).split()
         val_300 = ';' + construct_MARC_300(words)
 
-    if val_300 == ';':
+    if val_300.strip() == ';':
         return ''
     else:
         return val_300
@@ -633,16 +635,17 @@ def check_values_arch_mat(df, arch_mat_col, arch_mat_mapping_dict):
 
 
 def create_MARC_defualt_copyright(df):
-    df["5420"] = (
-        "$$lCopyright status not determined; "
-        + "Contract$$nNo copyright analysis"
-        + f'$$oYael Gherman {datetime.datetime.now().strftime("%Y%m%d")}$$qללא ניתוח מצב זכויות'
+    df["952"] = (
+            "$$aCopyright status not determined; No contract"
+            + "$$bNo copyright analysis"
+            + "$$cYael Gherman {}".format(datetime.datetime.today().strftime('%Y%m%d'))
+            + "$$dללא ניתוח מצב זכויות"
     )
-    df["5061"] = "$$aStaff Only;$$0000000018"
-    df["540"] = (
-        "$$aאיסור העתקה"
-        + "$$uhttp://web.nli.org.il/sites/NLI/Hebrew/library/items-terms-of-use/Pages/nli-copying-prohibited.aspx"
+    df["939"] = (
+            "$$aאיסור העתקה"
+            + "$$uhttp://web.nli.org.il/sites/NLI/Hebrew/library/items-terms-of-use/Pages/nli-copying-prohibited.aspx"
     )
+    df["903"] = "$$aLibrary premises only;$$b000000018"
 
     return df
 
@@ -953,7 +956,7 @@ def create_MARC_260(df, col, date_cols):
                     "xx#"  # code xx# is xx# No place, unknown, or undetermined
                 )
 
-            countries = ["$$e[" + x + "]$$9heb" for x in countries]
+            countries = ["$$e[" + x + "]" for x in countries]
 
             if row[date_cols[2]] == "" or row[date_cols[2]] is None:
                 df.loc[index, "260"] = "".join(countries)
@@ -1097,6 +1100,7 @@ def create_date_format(string_date):
         "%Y-%m",
         "%Y-%m",
         "%Y-%m-%d %H:%M",
+        "%d-%m-%Y",
         "%Y-%m-%d %H:%M:%S",
         "%d/%m/%Y",
         "%m/%d/%Y",
@@ -1660,7 +1664,7 @@ def create_035_dict(file):
         for e in record.getElementsByTagName("datafield"):
             if e.attributes["tag"].value == "035":
                 for sb in e.getElementsByTagName("subfield"):
-                    dd["035"] = "$$a" + sb.attributes["code"].value + sb.childNodes[0].data
+                    dd["035"] = "$$" + sb.attributes["code"].value + sb.childNodes[0].data
         d[mms_id] = dd
     return d
 
@@ -1670,22 +1674,22 @@ def add_MARC_035(collection):
     rosetta_file = minidom.parse(rosetta_file_path)
     dict_035 = create_035_dict(rosetta_file)
 
-    df = collection.df_final_data.reset_index(drop=True).set_index("mms_id")
+    df = collection.df_final_data
 
     df["035"] = ""
-    for index, row in df.iterrows():
+    for mms_id, row in df.iterrows():
         try:
-            if index == np.nan:
-                sys.stderr.write(f"this index: {index} for {row['סימול']} is missing")
-            elif str(index) not in dict_035.keys():
+            if mms_id == np.nan:
+                sys.stderr.write(f"this index: {mms_id} for {row['סימול']} is missing")
+            elif str(mms_id) not in dict_035.keys():
                 sys.stderr.write(
-                    f"there is no 035 field for : {index}, for call number {row['סימול']}\n."
+                    f"there is no 035 field for : {mms_id}, for call number {row['סימול']}\n."
                 )
                 sys.exit()
-            elif len(dict_035[str(index)]) == 0:
+            elif len(dict_035[str(mms_id)]) == 0:
                 continue
             else:
-                df.loc[index, "035"] = create_907_value(dict_035[str(index)])
+                df.loc[mms_id, "035"] = create_907_value(dict_035[str(mms_id)])
         except:
             pass
     collection.df_final_data = df
