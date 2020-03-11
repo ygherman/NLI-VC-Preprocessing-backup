@@ -63,6 +63,7 @@ def create_MARC_093(df):
     df["093_1"] = df["093"] + "$$d" + collection_name_heb
     df["093_2"] = df["093"] + "$$d" + collection_name_eng
 
+    df = drop_col_if_exists(df, "093")
     df = drop_col_if_exists(df, "911")
     df = drop_col_if_exists(df, "שם האוסף")
 
@@ -117,8 +118,8 @@ def create_MARC_351_LDR(df):
     $c - Hierarchical level (NR)
 
     Also creates MARC LDR  based on hierarchical level.
-            - 0000npd^a22^^^^^^a^4500  - for file and item level records
-            - 0000npc^a22^^^^^^^^4500 - for all other levels
+            - 00000npd^a22^^^^^^a^4500  - for file and item level records
+            - 00000npc^a22^^^^^^^^4500 - for all other levels
     :param df: The original Dataframe
     :return:The Dataframe with the new 351 field
     """
@@ -126,9 +127,9 @@ def create_MARC_351_LDR(df):
     def define_LDR(hier):
 
         if hier == "File Record" or hier == "Item Record":
-            return "0000npd#a22######a#4500"
+            return "00000npd#a22######a#4500"
         else:
-            return "0000npc#a22########4500"
+            return "00000npc#a22########4500"
 
     if column_exists(df, "רמת תיאור"):
         col = "רמת תיאור"
@@ -238,21 +239,21 @@ def create_MARC_500(df):
         if "מיכל" in list(df.columns.values) and row["מיכל"] != "":
             new_value = new_value + "מספר מיכל: " + str(row["מיכל"]) + "; "
         if (
-            "קוד תיק ארכיון" in list(df.columns.values)
-            and str(row["קוד תיק ארכיון"]).replace(".0", "") != ""
+                "קוד תיק ארכיון" in list(df.columns.values)
+                and str(row["קוד תיק ארכיון"]).replace(".0", "") != ""
         ):
             new_value = new_value + "קוד תיק ארכיון: " + row["קוד תיק ארכיון"] + "; "
         if (
-            "הערות גלוי למשתמש קצה" in list(df.columns.values)
-            and row["הערות גלוי למשתמש קצה"] != ""
+                "הערות גלוי למשתמש קצה" in list(df.columns.values)
+                and row["הערות גלוי למשתמש קצה"] != ""
         ):
             new_value = new_value + "הערות: " + row["הערות גלוי למשתמש קצה"] + "; "
         if (
-            "מילות מפתח_מקומות" in list(df.columns.values)
-            and row["מילות מפתח_מקומות"] != ""
+                "מילות מפתח_מקומות" in list(df.columns.values)
+                and row["מילות מפתח_מקומות"] != ""
         ):
             new_value = (
-                new_value + "מקומות המוזכרים בתיק: " + row["מילות מפתח_מקומות"] + "; "
+                    new_value + "מקומות המוזכרים בתיק: " + row["מילות מפתח_מקומות"] + "; "
             )
         if "משך" in list(df.columns.values) and row["משך"] != "":
             new_value = new_value + "משך ההקלטה: " + row["משך"] + "; "
@@ -338,7 +339,7 @@ def all_rest_creators(x):
     :return x: the list without the first creator occurance
     """
     if ";" in x:
-        return x[x.find(";") + 1 :]
+        return x[x.find(";") + 1:]
     else:
         return ""
 
@@ -547,8 +548,12 @@ def construct_MARC_300(words_list):
             nums += word
         else:
             text += word + ' '
-    print(f'$$a{nums.strip()}$$f{text.rstrip()}')
-    return f'$$a{nums.strip()}$$f{text.rstrip()}'
+    if text != '':
+        text = '$$f' + text.rstrip()
+    if nums != '':
+        nums = '$$a' + nums.rstrip()
+
+    return nums + text
 
 
 def split_MARC_300(row):
@@ -559,15 +564,15 @@ def split_MARC_300(row):
         text = str(row).split(';')
         for val in text:
             words = val.split()
-            val_300 += ";" + construct_MARC_300(words)
+            val_300 += construct_MARC_300(words) + ";"
     else:
         words = str(row).split()
-        val_300 = ';' + construct_MARC_300(words)
+        val_300 = construct_MARC_300(words) + ';'
 
     if val_300.strip() == ';':
         return ''
     else:
-        return val_300
+        return val_300.rstrip(";")
 
 
 def create_MARC_300(df):
@@ -581,18 +586,17 @@ def create_MARC_300(df):
     :param df: The original Dataframe
     :return:The Dataframe with the new 351 field
     """
-    col = [x for x in list(df.columns.values) if "היקף" in x][0]
-
     try:
-        col
+        col = [x for x in list(df.columns.values) if "היקף" in x][0]
     except NameError:
         print("col variable not defined")
         pass
     else:
 
         df["300"] = df[col].apply(split_MARC_300)
+        df = remove_duplicate_in_column(df, '300')
         df = explode_col_to_new_df(df, '300')
-        df = drop_col_if_exists(df, col)
+        df = drop_col_if_exists(df, '300')
 
     return df
 
@@ -962,7 +966,7 @@ def create_MARC_260(df, col, date_cols):
                 df.loc[index, "260"] = "".join(countries)
             else:
                 df.loc[index, "260"] = (
-                    "".join(countries) + "$$g" + str(row[date_cols[2]]).strip()
+                        "".join(countries) + "$$g" + str(row[date_cols[2]]).strip()
                 )
 
             # deal with 008 field
@@ -1142,10 +1146,10 @@ def construct_921(df):
 def construct_933(df):
     df_explode_933 = (
         df["933"]
-        .str.split(";", expand=True)
-        .rename(columns=lambda x: f"933_{x + 1}")
-        .replace(np.nan, "")
-        .replace("nan", "")
+            .str.split(";", expand=True)
+            .rename(columns=lambda x: f"933_{x + 1}")
+            .replace(np.nan, "")
+            .replace("nan", "")
     )
     for col in list(df_explode_933):
         df_explode_933[col] = df_explode_933[col].map(
@@ -1161,10 +1165,10 @@ def construct_933(df):
                 continue
             else:
                 df.loc[index, col] = (
-                    "$$a"
-                    + str(row[col])
-                    + " "
-                    + create_date_format(df.loc[index, "תאריך הרישום"])
+                        "$$a"
+                        + str(row[col])
+                        + " "
+                        + create_date_format(df.loc[index, "תאריך הרישום"])
                 )
     df = drop_col_if_exists(df, "933")
     return df
@@ -1283,10 +1287,10 @@ def create_MARC_524(df):
 
     def create_citation_eng(index, collection_name):
         citation_eng = (
-            collection_name_eng
-            + ", "
-            + "National Library of Israel, Reference code: "
-            + index
+                collection_name_eng
+                + ", "
+                + "National Library of Israel, Reference code: "
+                + index
         )
         return citation_eng
 
@@ -1407,10 +1411,10 @@ def create_MARC_336(df):
     """
     arch_mat_map_336 = (
         Authority_instance.df_arch_mat_auth.loc[
-            :, ["ARCHIVAL_MATERIAL", "rdacontent 336"]
+        :, ["ARCHIVAL_MATERIAL", "rdacontent 336"]
         ]
-        .set_index("ARCHIVAL_MATERIAL")
-        .to_dict()["rdacontent 336"]
+            .set_index("ARCHIVAL_MATERIAL")
+            .to_dict()["rdacontent 336"]
     )
 
     for index, row in df.iterrows():
@@ -1509,9 +1513,9 @@ def create_MARC_534(df):
     if column_exists(df, "תאריך יצירת החפץ / הטקסט המקורי מוקדם"):
         new_534_col = "534_" + str(last_index_of_reoccurring_column(df, "534"))
         df[new_534_col] = (
-            df["תאריך יצירת החפץ / הטקסט המקורי מוקדם"].map(str)
-            + " - "
-            + df["תאריך יצירת החפץ / הטקסט המקורי מאוחר"].astype(str)
+                df["תאריך יצירת החפץ / הטקסט המקורי מוקדם"].map(str)
+                + " - "
+                + df["תאריך יצירת החפץ / הטקסט המקורי מאוחר"].astype(str)
         )
         df[new_534_col] = df[new_534_col].map(
             lambda x: "$$aנוצר לראשונה בין התאריכים: " + x if x != " - " else ""
@@ -1560,9 +1564,9 @@ def create_MARC_590(df):
 
 def create_MARC_584(df):
     if (
-        column_exists(df, "ACCURALS")
-        or column_exists(df, "אוסףפתוח")
-        or column_exists(df, "אוסף פתוח")
+            column_exists(df, "ACCURALS")
+            or column_exists(df, "אוסףפתוח")
+            or column_exists(df, "אוסף פתוח")
     ):
         accurals_mapper = {
             "כן": "האוסף המקורי ממשיך לצבור חומרים (אוסף פתוח)",
@@ -1707,12 +1711,12 @@ def add_MARC_597(collection):
     return collection
 
 
-def create_MARC_final_table(collection):
+def export_MARCXML_final_table(collection):
     logger = logging.getLogger()
-    logger.info(f'[MARCXML] create final XML file for {collection.collection_id}')
+    logger.info(f'[MARCXML] create final MARC XML file for {collection.collection_id}')
     df_final_cols = [
-        x for x in list(collection.df_final_data.columns) if x[0].isdigit()
-    ] + ["LDR"]
+                        x for x in list(collection.df_final_data.columns) if x[0].isdigit()
+                    ] + ["LDR"]
     collection.marc_data = collection.df_final_data[df_final_cols]
 
     counter, run_time = collection.create_MARC_XML()
@@ -1740,12 +1744,12 @@ def create_MARC_650_branch(collection):
     """
     if collection.branch == "VC-Architect":
         # last_index_of_reoccurring_column(collection.df_final_data, "650")
-        collection.df_final_data["650"] = "$$aArchitecture$$zIsrael"
+        collection.df_final_data["650 7"] = "$$aArchitecture$$zIsrael"
     elif collection.branch == "VC-Dance":
-        collection.df_final_data["650"] = "$$aDance$$zIsrael"
+        collection.df_final_data["650 7"] = "$$aDance$$zIsrael"
     elif collection.branch == "VC-Design":
-        collection.df_final_data["650"] = "$$aDesign$$zIsrael"
+        collection.df_final_data["650 7"] = "$$aDesign$$zIsrael"
     elif collection.branch == "VC-Theater":
-        collection.df_final_data["650"] = "$$aTheater$$zIsrael"
+        collection.df_final_data["650 7"] = "$$aTheater$$zIsrael"
 
     return collection

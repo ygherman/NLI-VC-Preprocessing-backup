@@ -120,18 +120,18 @@ def create_xl_from_gspread(client: gspread.client.Client, file_id: str) -> dict:
 def export_entire_catalog(collection, df_sheets_dict, stage):
     if stage == "PRE_FINAL":
         file_path = collection.data_path_raw / (
-            collection.collection_id + "_PRE_FINAL.xlsx"
+                collection.collection_id + "_PRE_FINAL.xlsx"
         )
     elif stage == "FINAL":
         file_path = collection.data_path_processed / (
-            collection.collection_id
-            + "_final_"
-            + datetime.now().strftime("%Y%m%d")
-            + ".xlsx"
+                collection.collection_id
+                + "_final_"
+                + datetime.now().strftime("%Y%m%d")
+                + ".xlsx"
         )
     elif stage == "PRE1_FINAL":
         file_path = collection.data_path_raw / (
-            collection.collection_id + "_PRE1_FINAL.xlsx"
+                collection.collection_id + "_PRE1_FINAL.xlsx"
         )
 
     if type(df_sheets_dict) == list:
@@ -191,13 +191,13 @@ def remove_empty_rows(df):
 
 def remove_instructions_row(df):
     if (
-        df.iloc[0].str.contains("שדה חובה!!").any()
-        or df.iloc[0].str.contains("שדה חובה").any()
+            df.iloc[0].str.contains("שדה חובה!!").any()
+            or df.iloc[0].str.contains("שדה חובה").any()
     ):
         # remove instruction line
         return df.loc[
-            1:,
-        ]
+               1:,
+               ]
     else:
         return df
 
@@ -373,7 +373,7 @@ class Collection:
             sys.exit()
 
         assert (
-            combined_catalog is not None
+                combined_catalog is not None
         ), "the Collection and Catalog dataframes could not be combined"
         combined_catalog = remove_unnamed_cols(combined_catalog)
         combined_catalog = combined_catalog.set_index("UNITID")
@@ -445,13 +445,13 @@ class Collection:
             :return:
             """
             if (
-                df.iloc[0].str.contains("שדה חובה!!").any()
-                or df.iloc[0].str.contains("שדה חובה").any()
+                    df.iloc[0].str.contains("שדה חובה!!").any()
+                    or df.iloc[0].str.contains("שדה חובה").any()
             ):
                 # remove instruction line
                 return df.loc[
-                    1:,
-                ]
+                       1:,
+                       ]
             else:
                 return df
 
@@ -467,7 +467,7 @@ class Collection:
                 return "יצירות"
             if "Dance" in branch:
                 assert (
-                    "יצירות - מחול" in xl_file.sheet_names
+                        "יצירות - מחול" in xl_file.sheet_names
                 ), " sheet יצירות - מחול does not exist in file."
                 return "יצירות - מחול"
             elif "Architect" in branch:
@@ -475,7 +475,7 @@ class Collection:
                     return "יצירות - אדריכלות"
             elif "Theater" in branch:
                 assert (
-                    "יצירות - תאטרון" in xl_file.sheet_names
+                        "יצירות - תאטרון" in xl_file.sheet_names
                 ), " sheet יצירות - תאטרון does not exist in file."
                 return "יצירות - תאטרון"
 
@@ -524,7 +524,7 @@ class Collection:
             dataframe2export = self.df_final_data
         dt_now_temp = datetime.now().strftime("%Y%m%d")
         preprocess_filename = self.data_path_raw / (
-            self.collection_id + "_" + dt_now_temp + "_preprocessing_test.xlsx"
+                self.collection_id + "_" + dt_now_temp + "_preprocessing_test.xlsx"
         )
         write_excel(dataframe2export, preprocess_filename, "Catalog")
 
@@ -543,9 +543,9 @@ class Collection:
 
         # create directory and sub-folders for collection
         self.BASE_PATH = (
-            Path("C:/Users/Yaelg/Google Drive/National_Library/Python")
-            / (branch)
-            / collection_id
+                Path("C:/Users/Yaelg/Google Drive/National_Library/Python")
+                / (branch)
+                / collection_id
         )
 
         # initialize directory with all folder and sub-folders for the collection
@@ -652,13 +652,13 @@ class Collection:
         df = self.marc_data
         #  MARCXML file
         output_file = self.data_path_processed / (
-            self.collection_id + "_final_" + self.dt_now + ".xml"
+                self.collection_id + "_final_" + self.dt_now + ".xml"
         )
         writer = XMLWriter(open(output_file, "wb"))
 
         # MarcEdit MRK file
         output_file_mrk = self.data_path_processed / (
-            self.collection_id + "_finalMRK_" + self.dt_now + ".txt"
+                self.collection_id + "_finalMRK_" + self.dt_now + ".txt"
         )
         mrk_file = open(output_file_mrk, "w", encoding="utf8")
 
@@ -678,16 +678,18 @@ class Collection:
                     continue
                 # leader
                 elif col == "LDR":
-                    l = list(record.leader)
-                    l[0:5] = "0000"
-                    l[5] = "n"
-                    l[6] = "p"
+                    l = record.leader
+                    l.record_status = "c"  # c - Corrected or revised
+                    l.type_of_record = "p"  # p - Mixed materials
+
+                    # Bibliographic level
                     if row["351"] == "File Record" or "Item Record":
-                        l[7] = "c"
+                        l.bibliographic_level = "c"
                     else:
-                        l[7] = "d"
-                    l[9] = "a"  # flag saying this record is utf8
-                    record.leader = "".join(l)
+                        l.bibliographic_level = "d"
+
+                    l.coding_scheme = "a"  # flag saying this record is utf8
+                    l.cataloging_form = "a"
                     continue
 
                 # 008
@@ -741,27 +743,30 @@ class Collection:
         function to transform a MARC formatted Dataframe into a MARC sequantial file
 
         """
+        logger = logging.getLogger(__name__)
+        logger.info(f'[MARC Sequantial] Creating MARC sequantial file for {self.collection_id}')
+
         df = self.marc_data
         ad = AlphabetDetector()
         output_file_name = self.data_path_processed / (
-            self.collection_id + "_final_" + self.dt_now + ".txt"
+                self.collection_id + "_final_" + self.dt_now + ".txt"
         )
 
         with open(output_file_name, "w", encoding="utf8") as f:
             for index, row in df.iterrows():
 
-                f.write(f"{index} 001 L {index}\n")
+                f.write(f"{index} 001   {index}\n")
                 for col in df:
                     # if field is empty, skip
                     if str(row[col]) == "":
                         continue
 
-                    # check language
-                    lang = ad.detect_alphabet(str(row[col]))
-                    if "HEBREW" in lang:
-                        lang = "H"
-                    else:
-                        lang = "L"
+                    # # check language
+                    # lang = ad.detect_alphabet(str(row[col]))
+                    # if "HEBREW" in lang:
+                    #     lang = "H"
+                    # else:
+                    #     lang = "L"
 
                     # construct 5 character field code
                     if "_" in col:
@@ -770,12 +775,13 @@ class Collection:
                         col_name = "{:<5}".format(col)
 
                     # construct the line for the MARC sequantial file
-                    line = "{} {} {} {}".format(
-                        index, col_name, lang, str(row[col]) + "\n"
-                    )
+                    line = f"{index} {col_name} {str(row[col])}\n"
 
                     # write to file
                     f.write(line)
+
+    # def export_selected_cols(self):
+    #     x`
 
     # def write_to_excel(self, path, sheets):
     #     """

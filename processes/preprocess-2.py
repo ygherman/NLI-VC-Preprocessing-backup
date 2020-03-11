@@ -65,37 +65,37 @@ def main():
     # )
 
     # create 008
-    logger.info(f"[008] Creating initial MARC 008 field")
+    logger.info(f"[008] Creating  MARC 008 field")
     collection.df_final_data = marc.create_MARC_initial_008(collection.df_final_data)
 
     # create 351 (רמת תיאור)
-    logger.info(f"[351] Creating initial MARC 351 - LEVEL OF DESCRIPTION")
+    logger.info(f"[351] Creating  MARC 351 - LEVEL OF DESCRIPTION")
     collection.df_final_data = marc.create_MARC_351_LDR(collection.df_final_data)
 
     # create 520 (תיאור)
-    logger.info(f"[520] Creating initial MARC 520 - SCOPE AND CONTENT")
+    logger.info(f"[520] Creating  MARC 520 - SCOPE AND CONTENT")
     collection.df_final_data = marc.create_MARC_520(collection.df_final_data)
 
     # create 245 (כותרת)
-    logger.info(f"[245] Creating initial MARC 245 - UNITITLE")
+    logger.info(f"[245] Creating  MARC 245 - UNITITLE")
     collection.df_final_data = marc.create_MARC_245(collection.df_final_data)
 
     # create 110 and 100 (FIRST CREATORS CORPS and PERS) (יוצר ראשון - איש/ יוצר ראשון = מוסד)
     collection.df_final_data = marc.create_MARC_100_110(collection.df_final_data)
 
     # create 300 (EXTENT) (היקף)
-    logger.info("[MARC 300] Creating ")
+    logger.info("[MARC 300] Creating  MARC 300 - EXTENT ")
     collection.df_final_data = marc.create_MARC_300(collection.df_final_data)
 
     # create 700 and 710 (added creators PERS and CORPS) (יוצרים נוספים - אישים/יוצרים נוספים - מוסד)
     collection.df_final_data = marc.create_MARC_700_710(collection.df_final_data)
 
     # create 655 (ARCHIVAL_MATERIAL) (סוג חומר)
-    logger.info("[MARC 655] Creating ")
+    logger.info("[MARC 655] Creating  MARC 655 - ARCHIVAL MATERIAL ")
     collection.df_final_data = marc.create_marc_655(collection.df_final_data)
 
     # create 041 (LANGUAGE) (שפה)
-    logger.info("[MARC 041] Creating ")
+    logger.info("[MARC 041] Creating  MARC 041 - LANGUAGE")
     collection.df_final_data = marc.create_MARC_041(collection.df_final_data)
 
     ####################################################
@@ -109,11 +109,12 @@ def main():
     )
 
     # create 255 - scale field
-    logger.info("[MARC 255] Creating")
+    logger.info("[MARC 255] Creating  MARC 255 - SCALE")
     collection.df_final_data = marc.create_MARC_255(collection.df_final_data)
 
     # create 260 (DATE fields, and PUBLICATION_COUNTRY) (מדינת פרסום, תאריך מנורמל מוקדם, תאריך מנורמל מאוחר)
-    logger.info("[MARC 260] Creating")
+    logger.info("[MARC 260] Creating  MARC 260 $g $e - DATE (free text), and publication country."
+                " Updates MARC 008")
 
     collection.df_final_data = marc.create_MARC_260(
         collection.df_final_data,
@@ -125,15 +126,15 @@ def main():
 
     # add 597 (CREDIT)
     collection = marc.add_MARC_597(collection)
-    logger.info("[MARC 597] Creating")
+    logger.info("[MARC 597] Creating MARC 597 - CREDITS")
 
     # create 921, 933 (CATALOGUER, CATALOGING DATE)
-    logger.info("[MARC 921/933] Creating")
+    logger.info("[MARC 921/933] Creating MARC 921/933 - CATALOGUERS and CATALOGUING DATE")
 
     collection.df_final_data = marc.create_MARC_921_933(collection.df_final_data)
 
     # create 500 (NOTES) and other fields:
-    logger.info("[MARC 500] Creating MARC 500 Notes field")
+    logger.info("[MARC 500] Creating MARC 500 - NOTES")
     collection.df_final_data = marc.create_MARC_500(collection.df_final_data)
     collection.df_final_data = marc.create_MARC_500s_4collection(
         collection.df_final_data
@@ -154,7 +155,7 @@ def main():
 
     # create OWN (Default value: NNL)
     logger.info(
-        "[MARC 948] initializing MARC 948 - formerly OWn with constant values: NNL"
+        "[MARC 948] initializing MARC 948 - formerly Own with constant values: NNL"
     )
     collection.df_final_data = marc.create_MARC_948(collection.df_final_data)
 
@@ -162,7 +163,7 @@ def main():
     logger.info("[MARC 773] Creating MARC 773 - the hierarchical link field")
     collection.df_final_data = marc.create_MARC_773(collection.df_final_data)
 
-    # create 336 (#TODO add description)
+    # create 336
     logger.info("[MARC 336] Creating MARC RDA 336 ")
 
     collection.df_final_data, df_explode_336 = marc.create_MARC_336(
@@ -170,28 +171,30 @@ def main():
     )
     df2 = pd.concat([collection.df_final_data, df_explode_336], axis=1)
 
-    # create 337 338 (#TODO add description)
+    # create 337 338
     logger.info("[MARC 337/338] Creating MARC RDA 337/338 ")
     collection.df_final_data = marc.create_MARC_337_338(collection.df_final_data)
 
-    # create 534 (#TODO add description)
-    logger.info("[MARC 534] Creating MARC 534 ")
+    # create 534
+    logger.info("[MARC 534] Creating MARC 534 - MEDIA FORMAT ")
     collection.df_final_data = marc.create_MARC_534(collection.df_final_data)
 
     # create MARC 590
-    logger.info("[MARC 590] Creating MARC  590 ")
+    logger.info("[MARC 590] Creating MARC  590  - HIDDEN NOTES")
     collection.df_final_data = marc.create_MARC_590(collection.df_final_data)
 
     # create MARC 561
-    logger.info("[MARC 561] Creating MARC  561 ")
+    logger.info("[MARC 561] Creating MARC  561 - Ownership and Custodial History")
     collection.df_final_data = marc.create_MARC_561(collection.df_final_data)
 
     collection.temp_preprocess_file(stage="POST")
 
     #  ADD 907 (#Rossetta link)
+    logger.info("[MARC 907] Recreating MARC 907 - adding the Rossetta field, link to the digital object (if exists)")
     collection = marc.add_MARC_907(collection)
 
     # recreate 035 MARC field from the ROS\[collection_id]_907.xml file
+    logger.info("[MARC 035] Recreating MARC 035 - for records which are migrated from Aleph")
     collection = marc.add_MARC_035(collection)
 
     # create MARC 650 for project branches
@@ -199,7 +202,7 @@ def main():
     collection = marc.create_MARC_650_branch(collection)
 
     # create MARC Catalog
-    marc.create_MARC_final_table(collection)
+    marc.export_MARCXML_final_table(collection)
     collection.create_marc_seq_file()
 
     #
