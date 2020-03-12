@@ -8,5 +8,5 @@ setup(
     license='',
     author='Yaelg',
     author_email='yael.vardinagherman@nli.org.il',
-    description='preprocessing and ETL for NLI VC Catalogs'
+    description='preprocessing and ETL for NLI VC Catalogs', install_requires=['mysql']
 )
