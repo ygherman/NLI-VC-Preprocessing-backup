@@ -15,11 +15,11 @@ from alphabet_detector import AlphabetDetector
 from oauth2client.service_account import ServiceAccountCredentials
 from pymarc import XMLWriter, Record, Field
 
-from VC_collections.project import get_branch_colletionID
 from . import columns
 from .fieldmapper import field_mapper
 from .files import create_directory, write_excel
 from .files import get_google_drive_api_path
+from .project import get_branch_colletionID
 
 
 def retrieve_collection():
@@ -95,7 +95,7 @@ def find_catalog_gspread(client, collection_id):
 def create_xl_from_gspread(client: gspread.client.Client, file_id: str) -> dict:
     """
     the function opens the Google Sheet spreadsheet and  iterates over all the sheets within the file, creates a
-    dataframe from each sheets and adds it to a dictionary of dataframes.
+    dataframe from each sheet and adds it to a dictionary of dataframes.
 
     :param client: the google drive/sheets client api created by the creadentials in the
         'google_drive_api/client_secret.json' file.
@@ -104,7 +104,10 @@ def create_xl_from_gspread(client: gspread.client.Client, file_id: str) -> dict:
     """
     spreadsheet = client.open_by_key(file_id)
     all_sheets_as_dfs = {}
-    worksheet_list = spreadsheet.worksheets()
+    try:
+        worksheet_list = spreadsheet.worksheets()
+    except:
+        pass
 
     for sheet in worksheet_list:
         print(sheet)
@@ -584,13 +587,13 @@ class Collection:
             self.aleph_custom04_path,
         )
 
-        # set up logger for collection instanc
+        # set up logger for collection instance
         logger = logging.getLogger(__name__)
 
         (
-            client,
-            self.google_sheet_file_id,
+            client, self.google_sheet_file_id,
             self.google_sheet_file_name,
+
         ) = find_catalog_gspread(connect_to_google_drive(), self.collection_id)
 
         logger.info("Creating ")
@@ -780,31 +783,7 @@ class Collection:
                     # write to file
                     f.write(line)
 
-    # def export_selected_cols(self):
-    #     x`
 
-    # def write_to_excel(self, path, sheets):
-    #     """
-    #     creates a excel file of a given dataframe
-    #     :param self: the dateframe or a list of dataframes to write to excel
-    #     :param path: the path name of the output file
-    #     :param sheets: can be a list of sheet or
-    #     """
-    #     file_name = path / (self.collection_id + "_" + datetime.now() + '_preprocessing_test.xlsx')
-    #     # Create a Pandas Excel writer using XlsxWriter as the engine.
-    #     writer = pd.ExcelWriter(file_name, engine='xlsxwriter')
-    #
-    #     # Convert the dataframe to an XlsxWriter Excel object.
-    #     if type(sheets) is list:
-    #         i = 0
-    #         for frame in self:
-    #             frame.to_excel(writer, sheet_name=sheets[i])
-    #             i += 1
-    #     else:
-    #         try:
-    #             r
-
-    # writer.close()
 
     def set_branch(self):
         while True:

@@ -29,12 +29,8 @@ import sys
 import pandas as pd
 
 # ROOTID finder
-from VC_collections.columns import drop_col_if_exists
-from VC_collections.value import find_nth
-
-# from value import find_nth
-# from VC_collections.columns import drop_col_if_exists
-# from VC_collections.value import find_nth
+from .columns import drop_col_if_exists
+from .value import find_nth
 
 ROOTID_finder = lambda x: x[: find_nth(x, "-", x.count("-"))] if "-" in x else ""
 
