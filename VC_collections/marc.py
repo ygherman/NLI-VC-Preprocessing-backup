@@ -782,6 +782,7 @@ def create_MARC_041(df):
 
         for index, row in df.iterrows():
             if row["שפה"] == "":
+                # if row['סוג חומר'] ==
                 continue
             languages = row["שפה"].split(";")
             try:
@@ -795,6 +796,7 @@ def create_MARC_041(df):
                 print("problem with ", index)
                 sys.stderr(f"problem with languages in {index}")
             field_008 = list(row["008"])
+
             # insert MARC langauge code in positions 35-37
             for i in range(35, 38):
                 field_008[i] = new_lang[0][i - 32]
@@ -826,7 +828,7 @@ def correct_506_privacy(df):
     return df
 
 
-def create_MARC_540(df):
+def create_MARC_952(df):
     """
         fuction's input is the entire table as a dataframe and constructs the 540 MARC field.
         Close list of values:
@@ -843,14 +845,28 @@ def create_MARC_540(df):
         """
 
     if column_exists(df, "מגבלות פרטיות"):
-        if column_exists(df, "540"):
-            if more_than_one_value_in_cell(df, "540"):
-                df = explode_col_to_new_df(df, "540")
-            col_number = str(last_index_of_reoccurring_column(df, "540"))
-            df["540_" + col_number] = df["מגבלות פרטיות"].apply(
-                lambda x: "$$a" + x if x != "" else ""
-            )
+        # if column_exists(df, "540"):
+        #     if more_than_one_value_in_cell(df, "540"):
+        #         df = explode_col_to_new_df(df, "540")
+        #     col_number = str(last_index_of_reoccurring_column(df, "540"))
+        #     df["540_" + col_number] = df["מגבלות פרטיות"].apply(
+        #         lambda x: "$$a" + x if x != "" else ""
+        #     )
+        df["952"] = df["מגבלות פרטיות"]
+        df = drop_col_if_exists(df, "מגבלות פרטיות")
 
+        if more_than_one_value_in_cell(df, "952"):
+            df = explode_col_to_new_df(df, "952")
+            df = drop_col_if_exists(df, "952")
+            last_col = last_index_of_reoccurring_column(df, "952")
+
+            i = 1
+            while i < last_col:
+                df["952_" + str(i)] = df["952_" + str(i)].apply(
+                    lambda x: "$$f" + str(x) if str(x).strip() != '' else '')
+                i += 1
+        else:
+            df["952"] = df["952"].apply(lambda x: "$$f" + str(x) if str(x).strip() != '' else '')
         # df = correct_506_privacy(df[df])
     return df
 
@@ -1391,6 +1407,10 @@ def create_MARC_630(df):
     return df
 
 
+def update_008_no_linguistic_content(val_008):
+    return "".join((val_008[:35], "zxx", val_008[38:]))
+
+
 def create_MARC_336(df):
     """
         he form of communication through which a work is expressed.
@@ -1405,7 +1425,7 @@ def create_MARC_336(df):
             type information. Code from: Genre/Form Code and Term Source Codes.
             The Project mapped all it's Archival Materiel terms from its Archival Materiel controlled vocabulary
             to the RDA content type terms and constructed the subfields according to the agreed upon mapping with Ahava.
-            (Archival Material - RDA content type mapping talbe)
+            (Archival Material - RDA content type mapping table)
     :param df:
     :return:
     """
@@ -1421,6 +1441,8 @@ def create_MARC_336(df):
         lst_336 = row["סוג חומר"].split(";")
         lst_336 = list(map(str.strip, lst_336))
         lst_336 = replace_lst_dict(lst_336, arch_mat_map_336)
+        if len(lst_336) == 1 and lst_336[0] == "$$astill image$$bsti$$2rdacontent":
+            df.loc[index, '008'] = update_008_no_linguistic_content(row['008'])
         df.loc[index, "336"] = ";".join(lst_336)
 
     df = remove_duplicate_in_column(df, "336")
@@ -1458,7 +1480,7 @@ def create_MARC_337_338(df):
 
 
 def last_index_of_reoccurring_column(df, col_name):
-    return len([col for col in list(df.columns) if col_name in col]) + 1
+    return len([col for col in list(df.columns) if col_name in col])
 
 
 # TODO - refactor messy messy function: use the Authority_instance
@@ -1569,7 +1591,7 @@ def create_MARC_584(df):
             or column_exists(df, "אוסף פתוח")
     ):
         accurals_mapper = {
-            "כן": "האוסף המקורי ממשיך לצבור חומרים (אוסף פתוח)",
+            "כן": "האוסף המקורי ממשיך לצבור חומרים (אוסף פתוח)a$",
             "לא": "$aהאוסף המקורי אינו צובר חומרים חדשים (אוסף סגור)",
         }
         df["584"] = df["584"].map(accurals_mapper)
@@ -1730,7 +1752,7 @@ def export_MARCXML_final_table(collection):
 def create_MARC_255(df):
     if "קנה מידה" in list(df.columns):
         df["255"] = df["קנה מידה"].map(
-            lambda x: "$$aקנה מידה: [" + x + "]" if x != "" else ""
+            lambda x: "$$aקנה מידה: [" + str(x) + "]" if x != "" else ""
         )
         return df
 

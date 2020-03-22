@@ -106,7 +106,7 @@ def get_alma_sid(custom04_path, collectionID, df):
 
 
     # convert MMS ID col to string
-
+    df.index = df.index.str.strip()
     df = df.merge(df_alma, on="סימול", how="left", indicator=True)
     # todo change this to logger
 

@@ -3,6 +3,9 @@
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
       <sourceFolder url="file://$MODULE_DIR$" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/.ipynb_checkpoints" />
+      <excludeFolder url="file://$MODULE_DIR$/Database" />
+      <excludeFolder url="file://$MODULE_DIR$/Gooey" />
       <excludeFolder url="file://$MODULE_DIR$/google_drive_api" />
     </content>
     <orderEntry type="jdk" jdkName="Python 3.7 (VC_Preprocessing)" jdkType="Python SDK" />
