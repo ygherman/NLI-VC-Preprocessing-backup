@@ -10,7 +10,6 @@ class TestCollection(TestCase):
 
     def test_clean_catalog(self):
         test_collection = Mock()
-        test_collection
 
 
 if __name__ == "__main__":

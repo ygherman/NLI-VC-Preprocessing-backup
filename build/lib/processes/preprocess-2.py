@@ -110,10 +110,6 @@ def main():
         collection.df_final_data
     )
 
-    collection.df_final_data = marc.create_default_040(
-        collection.df_final_data
-    )
-
     # create 255 - scale field
     logger.info("[MARC 255] Creating  MARC 255 - SCALE")
     collection.df_final_data = marc.create_MARC_255(collection.df_final_data)

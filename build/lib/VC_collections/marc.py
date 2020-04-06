@@ -1776,8 +1776,3 @@ def create_MARC_650_branch(collection):
         collection.df_final_data["650 7"] = "$$aTheater$$zIsrael"
 
     return collection
-
-
-def create_default_040(df):
-    df['040'] = "$$bheb$$erda"
-    return df

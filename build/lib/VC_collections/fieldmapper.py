@@ -171,6 +171,7 @@ field_mapper_back = {
     "SUBJECT": "מילות מפתח_נושאים",
     "PHYSLOC": "מיקום פיזי",
     "DIGITIZATION": "מסלול דיגיטציה",
+    "DURATION": "משך",
     "EST_FILES_NUM": "מספר קבצים מוערך",
     "COLLECTION_TYPE": "סוג אוסף",
     "ARCHIVAL_MATERIAL": "סוג חומר",
@@ -201,7 +202,6 @@ field_mapper_back = {
     "MMS ID": "מספר מערכת אלף",
 }
 
-
 level_mapper = {
     "אוסף": "Section Record",
     "חטיבה": "Fonds Record",
@@ -217,7 +217,6 @@ level_mapper = {
     "סידרה": "Series Record",
     "תתסידרה": "Sub-Series Record",
 }
-
 
 collection_field_mapper = {
     "סימול האוסף": "UNITID",
@@ -327,7 +326,6 @@ final_fields_back_mapper = {
     "UNITITLE_ENG": "כותרת אנגלית",
     "WORKS": "מילות מפתח_יצירות",
 }
-
 
 final_column_order = [
     "סימול אב",

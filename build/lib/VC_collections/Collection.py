@@ -274,7 +274,7 @@ def map_field_names_to_english(col_names: list) -> list:
 
     except:
         for col in col_names:
-            sys.stderr(f"{col} - does not exist")
+            sys.stderr.write(f"{col} - does not exist")
         sys.exit()
     return new_col_names
 
@@ -783,8 +783,6 @@ class Collection:
 
                     # write to file
                     f.write(line)
-
-
 
     def set_branch(self):
         while True:
