@@ -56,7 +56,7 @@ def main():
 
     # create MARC 911 and 093 field for Call Number (סימול פרויקט)
     logger.info("[911/093] Creating 911/093 MARC field for Call Number")
-    collection.df_final_data = marc.create_MARC_093(collection.df_final_data)
+    collection.df_final_data = marc.create_MARC_093(collection.df_final_data, collection.collection_id)
     collection.df_final_data.index = collection.df_final_data["093_1"].apply(
         lambda x: x[x.find("$$c") + 3: x.find("$$d")]
     )

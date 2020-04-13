@@ -104,10 +104,7 @@ def create_xl_from_gspread(client: gspread.client.Client, file_id: str) -> dict:
     """
     spreadsheet = client.open_by_key(file_id)
     all_sheets_as_dfs = {}
-    try:
-        worksheet_list = spreadsheet.worksheets()
-    except:
-        pass
+    worksheet_list = spreadsheet.worksheets()
 
     for sheet in worksheet_list:
         print(sheet)

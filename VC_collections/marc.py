@@ -29,7 +29,7 @@ Authority_instance = Authority()
 
 
 def create_MARC_initial_008(df):
-    df["008"] = "######k########xx######################d"
+    df["008"] = "######kAרב########xx######################d"
     return df
 
 
@@ -45,15 +45,13 @@ def create_MARC_091(df):
     return df
 
 
-def create_MARC_093(df):
+def create_MARC_093(df, collection_id):
     """add prefix '$$a' to the value
 
     :param df = dataframe
 
     """
     df["093"] = df["סימול"].apply(lambda x: "$$c" + str(x).strip())
-
-    collection_id = df.loc[df[df["351"] == "$$cSection Record"].index[0], "סימול"]
 
     collection_name_heb = Authority_instance.df_credits.loc[collection_id, "שם הארכיון"]
     collection_name_eng = Authority_instance.df_credits.loc[
@@ -991,7 +989,7 @@ def create_MARC_260(df, col, date_cols):
                 row[date_cols[0]], row[date_cols[1]], row[date_cols[2]], index
             )
             if early_date is None:
-                sys.stderr(
+                sys.stderr.write(
                     f"[DATE] Error with date - check MMS ID {index}, record call number {df.loc[index, 'סימול']}"
                 )
 
@@ -1000,7 +998,7 @@ def create_MARC_260(df, col, date_cols):
                 for i in range(7, 15):
                     field_008[i] = date[i - 7]
             except:
-                sys.stderr(
+                sys.stderr.write(
                     f"[DATE] Error with date - check MMS ID {index}, record call number {df.loc[index, 'סימול']}"
                 )
                 sys.exit()
@@ -1014,7 +1012,7 @@ def create_MARC_260(df, col, date_cols):
 
             df.loc[index, "008"] = "".join(field_008)
 
-    df = drop_col_if_exists(df, "col")
+    df = drop_col_if_exists(df, col)
 
     return df
 
