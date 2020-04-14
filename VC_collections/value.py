@@ -185,4 +185,4 @@ def check_date_values_in_row(date_start, date_end, date_free_text):
 
 
 def is_multi_value(val):
-    return ';' in str(val)
+    return ";" in str(val)

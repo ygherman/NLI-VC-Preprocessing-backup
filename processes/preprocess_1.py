@@ -269,7 +269,7 @@ def create_authorities_report(collection, authority_type):
 
     df_authority = pd.concat([df_creator, df_access], sort=True)
     df_authority["Count"] = df_authority.apply(lambda row: len(row["UNITID"]), axis=1)
-    df_authority.where(df_authority["Name"] != '').dropna(how="all")
+    df_authority.where(df_authority["Name"] != "").dropna(how="all")
 
     df_authority = pd.concat(
         [
@@ -280,7 +280,6 @@ def create_authorities_report(collection, authority_type):
         ],
         axis=1,
     )
-
 
     unique_authority_filename = collection.authorities_path / (
         collection.collection_id
@@ -366,8 +365,8 @@ def update_df_in_gdrive(collection, worksheet_name="קטלוג סופי", copy=F
         )
         gc = gspread.authorize(credentials)
         sh = gc.open_by_key(collection.google_sheet_file_id)
-        if 'מספרי מערכת חסרים' in sh.worksheets():
-            sh.del_worksheet('מספרי מערכת חסרים')
+        if "מספרי מערכת חסרים" in sh.worksheets():
+            sh.del_worksheet("מספרי מערכת חסרים")
         if copy:
             client = connect_to_google_drive()
             spreadsheet = client.copy(
@@ -402,10 +401,10 @@ def add_MMSIDs_to_full_catalog(collection):
 def add_normal_dates_to_section_record(df, collection_id):
     df = df.replace(r"^\s*$", np.nan, regex=True)
     if not column_exists(df, "DATE_START") and not column_exists(df, "DATE_START"):
-        df["DATE_START"] = ''
-        df["DATE_END"] = ''
+        df["DATE_START"] = ""
+        df["DATE_END"] = ""
     if pd.isnull(df.loc[collection_id, "DATE_START"]) and pd.isnull(
-        df.loc[collection_id, "DATE_END"]
+            df.loc[collection_id, "DATE_END"]
     ):
         date = df.loc[collection_id, "DATE"]
         pattern = re.compile(r"\d{4}")
@@ -447,7 +446,9 @@ def check_date_columns(df):
     if len(test_df) != 0:
         for index, row in test_df.iterrows():
             if row["DATE"] == "":
-                sys.stderr(f"[ERROR]  No DATE Values! Please check data at index: {index}")
+                sys.stderr(
+                    f"[ERROR]  No DATE Values! Please check data at index: {index}"
+                )
             else:
                 try:
                     early_date, late_date = extract_years_from_text(row["DATE"])
@@ -467,7 +468,7 @@ def check_cataloging_date(df: pd.DataFrame) -> pd.DataFrame:
     :return:
     """
 
-    mask = df['CATALOGING_DATE'].apply(pd.to_datetime, errors='coerce').isnull().any()
+    mask = df["CATALOGING_DATE"].apply(pd.to_datetime, errors="coerce").isnull().any()
     print(df.loc[:, mask])
 
     return df
@@ -603,12 +604,14 @@ def main():
     )
 
     if df_missing_records_in_alma is not None:
-        logger.error("Not all records have MMS ID - please create alma records for missing MMS IDs!")
+        logger.error(
+            "Not all records have MMS ID - please create alma records for missing MMS IDs!"
+        )
 
-        collection.missing_records = drop_col_if_exists(df_missing_records_in_alma.reset_index().set_index("סימול"),
-                                                        '001')
+        collection.missing_records = drop_col_if_exists(
+            df_missing_records_in_alma.reset_index().set_index("סימול"), "001"
+        )
         update_df_in_gdrive(collection, worksheet_name="מספרי מערכת חסרים", copy=False)
-
 
     logger.info(
         f"updating the preprocessed DataFrame in Google Sheets - "

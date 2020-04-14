@@ -588,9 +588,9 @@ class Collection:
         logger = logging.getLogger(__name__)
 
         (
-            client, self.google_sheet_file_id,
+            client,
+            self.google_sheet_file_id,
             self.google_sheet_file_name,
-
         ) = find_catalog_gspread(connect_to_google_drive(), self.collection_id)
 
         logger.info("Creating ")
@@ -702,11 +702,11 @@ class Collection:
                 field = col[:3]
 
                 # extract indicators
-                if col.find('_') == -1:
+                if col.find("_") == -1:
                     col_name = "{:<5}".format(col)
                     ind = [col_name[3], col_name[4]]
                 else:
-                    col_name = "{:<5}".format(col[:col.find('_')])
+                    col_name = "{:<5}".format(col[: col.find("_")])
                     ind = [col_name[3], col_name[4]]
 
                 # extract sub-fields
@@ -744,7 +744,9 @@ class Collection:
 
         """
         logger = logging.getLogger(__name__)
-        logger.info(f'[MARC Sequantial] Creating MARC sequantial file for {self.collection_id}')
+        logger.info(
+            f"[MARC Sequantial] Creating MARC sequantial file for {self.collection_id}"
+        )
 
         df = self.marc_data
         ad = AlphabetDetector()
@@ -759,7 +761,7 @@ class Collection:
                 f.write(f"{index} LDR   {row['LDR']}\n")
                 for col in df:
                     # if field is empty, skip
-                    if str(row[col]) == "" or col == 'LDR':
+                    if str(row[col]) == "" or col == "LDR":
                         continue
 
                     # # check language
@@ -780,8 +782,6 @@ class Collection:
 
                     # write to file
                     f.write(line)
-
-
 
     def set_branch(self):
         while True:

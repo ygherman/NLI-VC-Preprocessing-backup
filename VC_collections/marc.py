@@ -40,7 +40,9 @@ def create_MARC_091(df):
     :return: The Dataframe with the new 091 field
     """
     df["ברקוד"] = df["ברקוד"].astype(str).replace(".0", "")
-    df["091"] = df["ברקוד"].apply(lambda x: "$$a" + str(x).rstrip(".0") if str(x).strip() != "" else "")
+    df["091"] = df["ברקוד"].apply(
+        lambda x: "$$a" + str(x).rstrip(".0") if str(x).strip() != "" else ""
+    )
     df = drop_col_if_exists(df, "ברקוד")
     return df
 
@@ -98,7 +100,9 @@ def create_MARC_535(df):
         print("col variable not defined")
         pass
     else:
-        df["5351_2"] = df[col].apply(lambda x: "$$b" + str(x).strip() if str(x).strip() != "" else "")
+        df["5351_2"] = df[col].apply(
+            lambda x: "$$b" + str(x).strip() if str(x).strip() != "" else ""
+        )
 
     df = df.set_index("סימול")
     df = drop_col_if_exists(df, "סימול")
@@ -163,7 +167,9 @@ def create_MARC_245(df):
         pass
     else:
         df["24510"] = df[col].apply(
-            lambda x: "$$a" + str(x).strip() if str(x).strip() != "" else print(f"bad header: [{x}")
+            lambda x: "$$a" + str(x).strip()
+            if str(x).strip() != ""
+            else print(f"bad header: [{x}")
         )
         df = drop_col_if_exists(df, col)
 
@@ -276,11 +282,15 @@ def create_MARC_500s_4collection(df):
     df["500_2"] = df["500_2"].apply(
         lambda x: "$$aתיאור הטיפול באוסף בפרויקט: " + x if str(x).strip() != "" else ""
     )
-    df["500_3"] = df["500_3"].apply(lambda x: "$$aסוג האוסף: " + str(x).strip() if str(x).strip() != "" else "")
+    df["500_3"] = df["500_3"].apply(
+        lambda x: "$$aסוג האוסף: " + str(x).strip() if str(x).strip() != "" else ""
+    )
     df = explode_col_to_new_df(df, "581")
     cols_581 = [col for col in list(df.columns) if "581" in col]
     for col_name in cols_581:
-        df[col_name] = df[col_name].apply(lambda x: "$$a" + str(x).strip() if str(x).strip() != "" else "")
+        df[col_name] = df[col_name].apply(
+            lambda x: "$$a" + str(x).strip() if str(x).strip() != "" else ""
+        )
 
     return df
 
@@ -536,36 +546,36 @@ def create_MARC_700_710(df):
 
 
 def construct_MARC_300(words_list):
-    nums = ''
-    text = ''
+    nums = ""
+    text = ""
     for word in words_list:
         if word[0].isdigit():
             nums += word
         else:
-            text += word + ' '
-    if text != '':
-        text = '$$f' + text.rstrip()
-    if nums != '':
-        nums = '$$a' + nums.rstrip()
+            text += word + " "
+    if text != "":
+        text = "$$f" + text.rstrip()
+    if nums != "":
+        nums = "$$a" + nums.rstrip()
 
     return nums + text
 
 
 def split_MARC_300(row):
-    val_300 = ''
-    if str(row) == '':
+    val_300 = ""
+    if str(row) == "":
         return val_300
     elif is_multi_value(str(row)):
-        text = str(row).split(';')
+        text = str(row).split(";")
         for val in text:
             words = val.split()
             val_300 += construct_MARC_300(words) + ";"
     else:
         words = str(row).split()
-        val_300 = construct_MARC_300(words) + ';'
+        val_300 = construct_MARC_300(words) + ";"
 
-    if val_300.strip() == ';':
-        return ''
+    if val_300.strip() == ";":
+        return ""
     else:
         return val_300.rstrip(";")
 
@@ -589,9 +599,9 @@ def create_MARC_300(df):
     else:
 
         df["300"] = df[col].apply(split_MARC_300)
-        df = remove_duplicate_in_column(df, '300')
-        df = explode_col_to_new_df(df, '300')
-        df = drop_col_if_exists(df, '300')
+        df = remove_duplicate_in_column(df, "300")
+        df = explode_col_to_new_df(df, "300")
+        df = drop_col_if_exists(df, "300")
 
     return df
 
@@ -637,15 +647,14 @@ def create_MARC_defualt_copyright(df):
     df["952"] = (
             "$$aCopyright status not determined; No contract"
             + "$$bNo copyright analysis"
-            + "$$cYael Gherman {}".format(datetime.datetime.today().strftime('%Y%m%d'))
+            + "$$cYael Gherman {}".format(datetime.datetime.today().strftime("%Y%m%d"))
             + "$$dללא ניתוח מצב זכויות"
     )
     df["939"] = (
             "$$aאיסור העתקה"
             + "$$uhttp://web.nli.org.il/sites/NLI/Hebrew/library/items-terms-of-use/Pages/nli-copying-prohibited.aspx"
     )
-    df["903"] = "$$aStaff only;" \
-                ""
+    df["903"] = "$$aStaff only;" ""
 
     return df
 
@@ -750,7 +759,9 @@ def create_MARC_506_post_copyright(df, cols):
         field_506d = cols[1]
         field_506 = cols[0]
 
-    df[field_506d] = df[field_506d].apply(lambda x: "$$d" + str(x).strip() if str(x).strip() != "" else "")
+    df[field_506d] = df[field_506d].apply(
+        lambda x: "$$d" + str(x).strip() if str(x).strip() != "" else ""
+    )
     df["506"] = df[field_506] + df[field_506d]
 
     df = drop_col_if_exists(df, field_506d)
@@ -859,10 +870,13 @@ def create_MARC_952(df):
             i = 1
             while i < last_col:
                 df["952_" + str(i)] = df["952_" + str(i)].apply(
-                    lambda x: "$$f" + str(x) if str(x).strip() != '' else '')
+                    lambda x: "$$f" + str(x) if str(x).strip() != "" else ""
+                )
                 i += 1
         else:
-            df["952"] = df["952"].apply(lambda x: "$$f" + str(x) if str(x).strip() != '' else '')
+            df["952"] = df["952"].apply(
+                lambda x: "$$f" + str(x) if str(x).strip() != "" else ""
+            )
         # df = correct_506_privacy(df[df])
     return df
 
@@ -1147,7 +1161,10 @@ def construct_921(df):
 
     try:
         df["921"] = (
-                "$$a" + df["921"].map(str) + " " + df["תאריך הרישום"].apply(create_date_format)
+                "$$a"
+                + df["921"].map(str)
+                + " "
+                + df["תאריך הרישום"].apply(create_date_format)
         )
     except:
         sys.exit()
@@ -1438,7 +1455,7 @@ def create_MARC_336(df):
         lst_336 = list(map(str.strip, lst_336))
         lst_336 = replace_lst_dict(lst_336, arch_mat_map_336)
         if len(lst_336) == 1 and lst_336[0] == "$$astill image$$bsti$$2rdacontent":
-            df.loc[index, '008'] = update_008_no_linguistic_content(row['008'])
+            df.loc[index, "008"] = update_008_no_linguistic_content(row["008"])
         df.loc[index, "336"] = ";".join(lst_336)
 
     df = remove_duplicate_in_column(df, "336")
@@ -1636,9 +1653,7 @@ def create_907_value(dict_907):
 
 
 def lookup_rosetta_file(digitization_path, collection_id):
-    rosetta_file_path = str(
-        digitization_path / "ROS" / (collection_id + "_907.xml")
-    )
+    rosetta_file_path = str(digitization_path / "ROS" / (collection_id + "_907.xml"))
     if not Path.exists(Path(rosetta_file_path)):
         sys.stderr.write(
             f"[ERROR] no file at {rosetta_file_path} - please add file and run again!"
@@ -1648,7 +1663,9 @@ def lookup_rosetta_file(digitization_path, collection_id):
 
 
 def add_MARC_907(collection):
-    rosetta_file_path = lookup_rosetta_file(collection.digitization_path, collection.collection_id)
+    rosetta_file_path = lookup_rosetta_file(
+        collection.digitization_path, collection.collection_id
+    )
     rosetta_file = minidom.parse(rosetta_file_path)
     df = collection.df_final_data.reset_index(drop=True).set_index("mms_id")
     rosetta_dict = create_907_dict(rosetta_file)
@@ -1686,7 +1703,9 @@ def create_035_dict(file):
         for e in record.getElementsByTagName("datafield"):
             if e.attributes["tag"].value == "035":
                 for sb in e.getElementsByTagName("subfield"):
-                    dd["035"] = "$$" + sb.attributes["code"].value + sb.childNodes[0].data
+                    dd["035"] = (
+                            "$$" + sb.attributes["code"].value + sb.childNodes[0].data
+                    )
                     if dd["035"].startswith("$$$$"):
                         dd["035"] = dd["035"][2:]
 
@@ -1695,7 +1714,9 @@ def create_035_dict(file):
 
 
 def add_MARC_035(collection):
-    rosetta_file_path = lookup_rosetta_file(collection.digitization_path, collection.collection_id)
+    rosetta_file_path = lookup_rosetta_file(
+        collection.digitization_path, collection.collection_id
+    )
     rosetta_file = minidom.parse(rosetta_file_path)
     dict_035 = create_035_dict(rosetta_file)
 
@@ -1734,7 +1755,7 @@ def add_MARC_597(collection):
 
 def export_MARCXML_final_table(collection):
     logger = logging.getLogger()
-    logger.info(f'[MARCXML] create final MARC XML file for {collection.collection_id}')
+    logger.info(f"[MARCXML] create final MARC XML file for {collection.collection_id}")
     df_final_cols = [
                         x for x in list(collection.df_final_data.columns) if x[0].isdigit()
                     ] + ["LDR"]
@@ -1777,5 +1798,5 @@ def create_MARC_650_branch(collection):
 
 
 def create_default_040(df):
-    df['040'] = "$$bheb$$erda"
+    df["040"] = "$$bheb$$erda"
     return df

@@ -6,9 +6,9 @@ db = Database()
 
 
 class Record(db.Entity):
-    collection = Required('Collection')
+    collection = Required("Collection")
     mms_id = PrimaryKey(str, auto=True)
-    unitid = Required(str, unique=True, index='unitid')
+    unitid = Required(str, unique=True, index="unitid")
     rootid = Required(str)
     barcode = Optional(str)
     original_id = Optional(str)
@@ -59,7 +59,7 @@ class Record(db.Entity):
 
 class Collection(db.Entity):
     collection_id = PrimaryKey(int, auto=True)
-    branch = Required('Branch')
+    branch = Required("Branch")
     records = Set(Record, cascade_delete=False)
 
 
@@ -70,14 +70,18 @@ class Branch(db.Entity):
 
 
 def main():
-    @db.on_connect(provider='sqlite')
+    @db.on_connect(provider="sqlite")
     def sqlite_case_sensitivity(db, connection):
         cursor = connection.cursor()
-        cursor.execute('PRAGMA case_sensitive_like = OFF')
-        db.bind(provider='sqlite', filename=r'\\172.0.12.30\Visual_Art\DB\NLIVC_DB.db', create_db=False)
+        cursor.execute("PRAGMA case_sensitive_like = OFF")
+        db.bind(
+            provider="sqlite",
+            filename=r"\\172.0.12.30\Visual_Art\DB\NLIVC_DB.db",
+            create_db=False,
+        )
         db.generate_mapping(create_tables=True)
 
-    record = Record(mms_id='')
+    record = Record(mms_id="")
 
 
 if __name__ == "__main__":

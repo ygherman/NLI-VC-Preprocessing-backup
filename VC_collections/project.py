@@ -67,7 +67,7 @@ def get_aleph_sid(custom04_path, collectionID, df):
 
 # TODO refactor this function
 def all_records_in_alma(df):
-    return len(df[df['_merge'] == 'left_only']) == 0
+    return len(df[df["_merge"] == "left_only"]) == 0
 
 
 def get_alma_sid(custom04_path, collectionID, df):
@@ -104,7 +104,6 @@ def get_alma_sid(custom04_path, collectionID, df):
     # rename columns
     df_alma.columns = ["MMS ID"]
 
-
     # convert MMS ID col to string
     df.index = df.index.str.strip()
     df = df.merge(df_alma, on="סימול", how="left", indicator=True)
@@ -127,11 +126,11 @@ def get_alma_sid(custom04_path, collectionID, df):
     df = drop_col_if_exists(df, "911_1")
 
     if all_records_in_alma(df):
-        df = drop_col_if_exists(df, '_merge')
+        df = drop_col_if_exists(df, "_merge")
         return df, df_alma, None
     else:
-        new_records_to_alma = df[df['_merge'] == 'left_only']
-        new_records_to_alma = drop_col_if_exists(new_records_to_alma, '_merge')
+        new_records_to_alma = df[df["_merge"] == "left_only"]
+        new_records_to_alma = drop_col_if_exists(new_records_to_alma, "_merge")
 
     return df, df_alma, new_records_to_alma
 

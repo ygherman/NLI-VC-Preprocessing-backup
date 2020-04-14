@@ -56,7 +56,9 @@ def main():
 
     # create MARC 911 and 093 field for Call Number (סימול פרויקט)
     logger.info("[911/093] Creating 911/093 MARC field for Call Number")
-    collection.df_final_data = marc.create_MARC_093(collection.df_final_data, collection.collection_id)
+    collection.df_final_data = marc.create_MARC_093(
+        collection.df_final_data, collection.collection_id
+    )
     collection.df_final_data.index = collection.df_final_data["093_1"].apply(
         lambda x: x[x.find("$$c") + 3: x.find("$$d")]
     )
@@ -110,17 +112,17 @@ def main():
         collection.df_final_data
     )
 
-    collection.df_final_data = marc.create_default_040(
-        collection.df_final_data
-    )
+    collection.df_final_data = marc.create_default_040(collection.df_final_data)
 
     # create 255 - scale field
     logger.info("[MARC 255] Creating  MARC 255 - SCALE")
     collection.df_final_data = marc.create_MARC_255(collection.df_final_data)
 
     # create 260 (DATE fields, and PUBLICATION_COUNTRY) (מדינת פרסום, תאריך מנורמל מוקדם, תאריך מנורמל מאוחר)
-    logger.info("[MARC 260] Creating  MARC 260 $g $e - DATE (free text), and publication country."
-                " Updates MARC 008")
+    logger.info(
+        "[MARC 260] Creating  MARC 260 $g $e - DATE (free text), and publication country."
+        " Updates MARC 008"
+    )
 
     collection.df_final_data = marc.create_MARC_260(
         collection.df_final_data,
@@ -136,7 +138,9 @@ def main():
     logger.info("[MARC 597] Creating MARC 597 - CREDITS")
 
     # create 921, 933 (CATALOGUER, CATALOGING DATE)
-    logger.info("[MARC 921/933] Creating MARC 921/933 - CATALOGUERS and CATALOGUING DATE")
+    logger.info(
+        "[MARC 921/933] Creating MARC 921/933 - CATALOGUERS and CATALOGUING DATE"
+    )
 
     collection.df_final_data = marc.create_MARC_921_933(collection.df_final_data)
 
@@ -197,16 +201,27 @@ def main():
     collection.temp_preprocess_file(stage="POST")
 
     #  ADD 907 (#Rossetta link)
-    logger.info("[MARC 907] Recreating MARC 907 - adding the Rossetta field, link to the digital object (if exists)")
+    logger.info(
+        "[MARC 907] Recreating MARC 907 - adding the Rossetta field, link to the digital object (if exists)"
+    )
     collection = marc.add_MARC_907(collection)
 
     # recreate 035 MARC field from the ROS\[collection_id]_907.xml file
-    logger.info("[MARC 035] Recreating MARC 035 - for records which are migrated from Aleph")
+    logger.info(
+        "[MARC 035] Recreating MARC 035 - for records which are migrated from Aleph"
+    )
     collection = marc.add_MARC_035(collection)
 
     # create MARC 650 for project branches
-    logger.info("[MARC 650] create MARC 650 subject heading according to collection's branch")
+    logger.info(
+        "[MARC 650] create MARC 650 subject heading according to collection's branch"
+    )
     collection = marc.create_MARC_650_branch(collection)
+
+    # last text cleaning up of dataframe:
+    collection.df_final_data = collection.df_final_data.replace(
+        r"\\n", " ", regex=True
+    ).replace("  ", " ", regex=True)
 
     # create MARC Catalog
     marc.export_MARCXML_final_table(collection)
