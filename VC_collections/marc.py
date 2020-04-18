@@ -3,11 +3,11 @@ import logging
 import os
 import re
 import sys
-from xml.dom import minidom
 
 import alphabet_detector
 import dateutil
 from fuzzywuzzy import process
+from xml.dom import minidom
 
 from VC_collections.AuthorityFiles import *
 from VC_collections.authorities import is_corp, is_pers, find_name, find_role
@@ -19,7 +19,7 @@ from VC_collections.columns import (
     more_than_one_value_in_cell,
 )
 from VC_collections.explode import explode_col_to_new_df
-from VC_collections.project import get_root_index_and_title
+from VC_collections.project import get_root_index_and_title, lookup_rosetta_file
 from VC_collections.value import clean_text, find_nth, replace_lst_dict, is_multi_value
 
 # ROOTID finder
@@ -181,7 +181,7 @@ def create_MARC_245(df):
         return df
 
     df["2461"] = df[col].apply(
-        lambda x: "$$iTranslated title:$$a" + x if str(x).strip() != "" else ""
+        lambda x: "$$iTranslated title:$$a" + x if str(x).strip().lstrip() != "" else ""
     )
 
     return df
@@ -498,6 +498,13 @@ def create_MARC_100_110(df):
     return df
 
 
+def create_MARC_710_current_owner(df):
+    df["בעלים נוכחי"] = df["בעלים נוכחי"].apply(
+        lambda x: x.rstrip() + "$$ecurrent owner" if x.strip() != "" else ""
+    )
+    return df
+
+
 def create_MARC_700_710(df):
     """
     create new column in dataframe for all the rest of creators
@@ -516,6 +523,9 @@ def create_MARC_700_710(df):
 
     df["7001"] = df["7001"].astype("str")
     df["7102"] = df["7102"].astype("str")
+
+    df = create_MARC_710_current_owner(df)
+    df["7102"] = df["7102"].astype(str) + df["בעלים נוכחי"]
 
     df = remove_duplicate_in_column(df, "7001")
     df = remove_duplicate_in_column(df, "7102")
@@ -1652,22 +1662,12 @@ def create_907_value(dict_907):
     return "$$" + "$$".join(words)
 
 
-def lookup_rosetta_file(digitization_path, collection_id):
-    rosetta_file_path = str(digitization_path / "ROS" / (collection_id + "_907.xml"))
-    if not Path.exists(Path(rosetta_file_path)):
-        sys.stderr.write(
-            f"[ERROR] no file at {rosetta_file_path} - please add file and run again!"
-        )
-        sys.exit()
-    return rosetta_file_path
-
-
 def add_MARC_907(collection):
     rosetta_file_path = lookup_rosetta_file(
         collection.digitization_path, collection.collection_id
     )
     rosetta_file = minidom.parse(rosetta_file_path)
-    df = collection.df_final_data.reset_index(drop=True).set_index("mms_id")
+    df = collection.df_final_data
     rosetta_dict = create_907_dict(rosetta_file)
 
     df["907"] = ""

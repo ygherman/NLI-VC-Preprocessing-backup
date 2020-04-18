@@ -9,7 +9,6 @@ from VC_collections.authorities import *
 
 
 def extract_dictionary_from_conf(file):
-
     with open(file, encoding="utf8") as json_file:
         file_data = json.load(json_file)
         print("\n".join([f"{key} :{val}" for key, val in file_data.items()]))

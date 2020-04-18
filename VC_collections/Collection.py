@@ -1,3 +1,4 @@
+import inspect
 import json
 import logging
 import os
@@ -624,6 +625,9 @@ class Collection:
         ]
 
         if "קטלוג סופי" in self.dfs.keys():
+            if inspect.stack()[1] == 'preprocess_1':
+                breakpoint
+
             self.df_final_data = remove_unnamed_cols(
                 self.dfs["קטלוג סופי"].rename(
                     columns={"Unnamed: 1": "סימול", "": "mms_id"}
@@ -638,6 +642,7 @@ class Collection:
                 )
             )
             # print(f'column of קטלוג סופי are: {[index, col for (index, col) in enumrate(self.dfs.columns)]}'
+            self.df_final_data = self.df_final_data.set_index("mms_id")
 
         # turn headers to English
         logger.info(f"Creating Excel: Saving file ")
@@ -757,8 +762,9 @@ class Collection:
         with open(output_file_name, "w", encoding="utf8") as f:
             for index, row in df.iterrows():
 
-                f.write(f"{index} 001   {index}\n")
                 f.write(f"{index} LDR   {row['LDR']}\n")
+                f.write(f"{index} 001   {index}\n")
+
                 for col in df:
                     # if field is empty, skip
                     if str(row[col]) == "" or col == "LDR":

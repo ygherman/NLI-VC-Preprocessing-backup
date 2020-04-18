@@ -297,18 +297,20 @@ def find_name(name):
 def create_combined_creators(row):
     if row["FIRST_CREATOR_PERS"] != "":
         first_creator = (
-            str(row["FIRST_CREATOR_PERS"])
-            + " ["
-            + str(row["TYPE_FIRST_CREATOR_PERS"])
-            + "]"
+                str(row["FIRST_CREATOR_PERS"])
+                + " ["
+                + str(row["TYPE_FIRST_CREATOR_PERS"])
+                + "]"
+        )
+    elif row["FIRST_CREATOR_CORP"] != "":
+        first_creator = (
+                str(row["FIRST_CREATOR_CORP"])
+                + " ["
+                + str(row["TYPE_FIRST_CREATOR_CORP"])
+                + "]"
         )
     else:
-        first_creator = (
-            str(row["FIRST_CREATOR_CORP"])
-            + " ["
-            + str(row["TYPE_FIRST_CREATOR_CORP"])
-            + "]"
-        )
+        first_creator = row["COLLECTION_CREATOR"]
 
     if "ADD_CREATORS" in list(row.index):
         add_creators = row["ADD_CREATORS"]

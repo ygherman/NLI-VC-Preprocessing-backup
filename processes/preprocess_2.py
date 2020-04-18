@@ -42,13 +42,13 @@ def main():
         pass
     else:
         logger.error(
-            f"The {collection.collection_id} Catalog did not pass the preprocessing-1 pipe!"
+            f"The {collection.collection_id} Catalog did not pass the preprocessing_1 pipe!"
             f"please run preprocess_1.py for this Catalog "
         )
         sys.exit()
 
-    df = collection.df_final_data.T.drop_duplicates().T
-    df.rename(columns={df.columns[0]: "mms_id"}, inplace=True)
+    # collection.df_final_data = collection.df_final_data.T.drop_duplicates().T
+    # df.rename(columns={df.columns[0]: "mms_id"}, inplace=True)
 
     # create 351 (רמת תיאור)
     logger.info(f"[351] Creating  MARC 351 - LEVEL OF DESCRIPTION")
@@ -59,9 +59,9 @@ def main():
     collection.df_final_data = marc.create_MARC_093(
         collection.df_final_data, collection.collection_id
     )
-    collection.df_final_data.index = collection.df_final_data["093_1"].apply(
-        lambda x: x[x.find("$$c") + 3: x.find("$$d")]
-    )
+    # collection.df_final_data.index = collection.df_final_data["093_1"].apply(
+    #     lambda x: x[x.find("$$c") + 3 : x.find("$$d")]
+    # )
 
     # # Add MMS id to catalog (מספר מערכת עלמא)
     # logger.info("[001] Add MMS id to catalog")

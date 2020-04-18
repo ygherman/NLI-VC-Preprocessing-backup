@@ -3,6 +3,7 @@ import timeit
 
 from alphabet_detector import AlphabetDetector
 from df2gspread import df2gspread as d2g
+from xml.dom import minidom
 
 from VC_collections.fieldmapper import (
     field_mapper,
@@ -29,6 +30,35 @@ from VC_collections.Collection import (
 )
 
 
+def create_mmsid_dict(ROS_file: minidom) -> dict:
+    """
+        The function takes the MARCxml file of the collection, which resides in ./[branch]/[collection]/Digitization/ROS
+        directory, and that was parsed into a minidom xml object, extract the MMS ID (001 tag) and the 093 (Rosetta
+        link) field, with all it's subfields. Saves the MMS ID and 907 subfield in a dictionary of dictionaries.
+    :param ROS_file: The MARCxml file of the collection parsed into a minidom object.
+    :return: dictionary of dictionaries, which key is the MMS ID and the inner dictionary is the extracted 907 field
+    """
+    d = {}
+    for record in ROS_file.getElementsByTagName("record"):
+        # for e in record.getElementsByTagName('controlfield'):
+        #     if e.attributes['tag'].value == '001':
+        #         id = e.childNodes[0].data
+        id = next(
+            e.childNodes[0].data
+            for e in record.getElementsByTagName("controlfield")
+            if e.attributes["tag"].value == "001"
+        )
+
+        dd = {}
+        for e in record.getElementsByTagName("datafield"):
+            if e.attributes["tag"].value == "093":
+                for sb in e.getElementsByTagName("subfield"):
+                    dd["093" + sb.attributes["code"].value] = sb.childNodes[0].data
+
+        d[id] = dd
+    return d
+
+
 def check_missing_rootids(collection):
     logger = logging.getLogger(__name__)
     root_ids = list(set(collection.full_catalog["ROOTID"].tolist()))
@@ -36,8 +66,8 @@ def check_missing_rootids(collection):
     logger.info("[ROOTID's] checking for missing root ids in the index")
     for value in root_ids:
         if (
-            value in collection.full_catalog.index
-            or value == ""
+                value in collection.full_catalog.index
+                or value == ""
             or value == collection.collection_id
         ):
             continue
