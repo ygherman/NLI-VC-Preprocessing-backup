@@ -291,6 +291,7 @@ final_fields_back_mapper = {
     "CATALOGUER": "שם הרושם",
     "COLLECTION_TYPE": "סוג אוסף",
     "COMBINED_CREATORS": "יוצרים",
+    "COLLECTION_CREATOR": 'יוצרי האוסף',
     "COMBINED_CREATORS_PERS": "יוצרים אישים",
     "COMBINED_CREATORS_CORPS": "יוצרים מוסדות",
     "CONTAINER": "מספר מיכל",
