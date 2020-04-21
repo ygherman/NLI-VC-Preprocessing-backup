@@ -30,7 +30,7 @@ import numpy as np
 import pandas as pd
 from oauth2client.service_account import ServiceAccountCredentials
 
-from .files import create_df_from_gs
+from VC_collections.files import create_df_from_gs
 
 
 def create_df_from_gs(spreadsheet, worksheet):
@@ -163,9 +163,14 @@ def order_archival_material(df_arch_mat_auth):
 
 def order_credits(df_credits):
     df_credits["597"] = (
-        "$$a" + df_credits["קרדיט עברית"].map(str) + "$$b" + df_credits["קרדיט אנגלית"]
+            "$$a" + df_credits["קרדיט עברית"].map(str) + "$$b" + df_credits["קרדיט אנגלית"]
     )
     return df_credits
+
+
+def create_privacy_mapping_dict(df_privacy_values):
+    return pd.Series(df_privacy_values.index.values,
+                     index=df_privacy_values.index.values).apply(lambda x: '$$f' + x)
 
 
 class Authority:
@@ -225,10 +230,11 @@ class Authority:
         df_credits, credits_col = create_df_from_gs(spreadsheet, "קרדיטים")
         df_credits = df_credits.set_index("סימול האוסף")
 
-        df_copyright_values, copyright_cols = create_df_from_gs(
+        df_privacy_values, copyright_cols = create_df_from_gs(
             spreadsheet, "מגבלות פרטיות"
         )
-        df_copyright_values = df_copyright_values.set_index("מגבלות פרטיות")
+        df_privacy_values = df_privacy_values.set_index("מגבלות פרטיות")
+        privacy_mapping_dict = create_privacy_mapping_dict(df_privacy_values)
 
         df_level, level_cols = create_df_from_gs(spreadsheet, "רמת תיאור")
 
@@ -251,8 +257,12 @@ class Authority:
         self.roles_dict = roles_dict
         self.df_level = df_level
         self.df_credits = order_credits(df_credits)
-        self.df_copyright_values = df_copyright_values
+        self.df_privacy_values = df_privacy_values
+        self.privacy_mapping_dict = privacy_mapping_dict
 
 
 if __name__ != "__main__":
+    Authority_instance = Authority()
+
+if __name__ == "__main__":
     Authority_instance = Authority()
