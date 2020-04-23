@@ -68,7 +68,7 @@ def check_missing_rootids(collection):
         if (
                 value in collection.full_catalog.index
                 or value == ""
-            or value == collection.collection_id
+                or value == collection.collection_id
         ):
             continue
         else:
@@ -88,20 +88,30 @@ def check_missing_rootids(collection):
 
 def create_ROOT_id(df):
     logger = logging.getLogger(__name__)
-    logger.info("Creating ROOTIDs column")
-    df["ROOTID"] = df.index
-    df.loc[df.index[1:], "ROOTID"] = df.loc[df.index[1:], "ROOTID"].apply(ROOTID_finder)
 
-    # reset ROOTID of section record to null
-    if len(df[df["LEVEL"] == "Section Record"]) == 1:
-        df.loc[df["LEVEL"] == "Section Record", "ROOTID"] = ""
+    if "ROOTID" in list(df.columns):
+        logger.info("[ROOTID] Column exists")
+        for index, row in df.loc[df.index[1:]].iterrows():
+            if row["ROOTID"] != '':
+                continue
+            else:
+                df.loc[index, "ROOTID"] = ROOTID_finder(index)
+        return df
+    else:
+        logger.info("Creating ROOTIDs column")
+        df["ROOTID"] = df.index
+        df.loc[df.index[1:], "ROOTID"] = df.loc[df.index[1:], "ROOTID"].apply(ROOTID_finder)
 
-    elif len(df[df["LEVEL"] == "Section Record"]) > 1:
-        logger.error(
-            "[ROOTID] Error - There is more than one record with LEVEL='Section Record'"
-        )
-        print(df[df["LEVEL"] == "Section Record"])
-        sys.exit()
+        # reset ROOTID of section record to null
+        if len(df[df["LEVEL"] == "Section Record"]) == 1:
+            df.loc[df["LEVEL"] == "Section Record", "ROOTID"] = ""
+
+        elif len(df[df["LEVEL"] == "Section Record"]) > 1:
+            logger.error(
+                "[ROOTID] Error - There is more than one record with LEVEL='Section Record'"
+            )
+            print(df[df["LEVEL"] == "Section Record"])
+            sys.exit()
 
     return df
 
@@ -171,6 +181,7 @@ def check_mandatory_cols_v1(df):
         "COMBINED_CREATORS",
     ]
 
+    df["COMBINED_CREATORS"] = df["COLLECTION_CREATOR"] + ";" + df["COMBINED_CREATORS"]
     #     assert (mandatory_cols in list(df.columns)), "not all mandatory columns exist in table"
     for col in mandatory_cols_version1:
         assert col in list(df.columns), f"Mandatory element [{col}] no in table"
@@ -253,7 +264,7 @@ def create_authorities_report(collection, authority_type):
         col in list(df.columns)
 
     except:
-        sys.stderr(f"There is no [{col}] column in full catalog dataframe")
+        sys.stderr.write(f"There is no [{col}] column in full catalog dataframe")
         return collection
 
     df = remove_duplicate_in_column(df, col)
@@ -476,7 +487,7 @@ def check_date_columns(df):
     if len(test_df) != 0:
         for index, row in test_df.iterrows():
             if row["DATE"] == "":
-                sys.stderr(
+                sys.stderr.write(
                     f"[ERROR]  No DATE Values! Please check data at index: {index}"
                 )
             else:
@@ -553,7 +564,16 @@ def main():
 
     collection.full_catalog = create_ROOT_id(collection.full_catalog)
 
-    logger.info(f"[ACCESSRESTRICT] add default value for ACCESSRESTIRCT field")
+    logger.info(f"[ACCESSRESTRICT] cheecking columns values")
+    collection.full_catalog = check_values_against_cvoc(
+        collection.full_catalog,
+        "ACCESSRESTRICT",
+        Authority_instance.privacy_search_dict,
+    )
+
+    logger.info(
+        f"[ACCESSRESTRICT] add default value for ACCESSRESTIRCT field for missing values"
+    )
     collection.full_catalog = fill_default_ACCESSRESTIRCT(collection.full_catalog)
 
     if "TO_DELETE" in list(collection.full_catalog.columns):
