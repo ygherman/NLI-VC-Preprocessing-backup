@@ -85,6 +85,7 @@ def main():
     collection.df_final_data = marc.create_MARC_245(collection.df_final_data)
 
     # create 110 and 100 (FIRST CREATORS CORPS and PERS) (יוצר ראשון - איש/ יוצר ראשון = מוסד)
+    logger.info("[MARC 100/110] Creating  MARC 100/110 - Creators (first)")
     collection.df_final_data = marc.create_MARC_100_110(collection.df_final_data)
 
     # create 300 (EXTENT) (היקף)
@@ -92,6 +93,7 @@ def main():
     collection.df_final_data = marc.create_MARC_300(collection.df_final_data)
 
     # create 700 and 710 (added creators PERS and CORPS) (יוצרים נוספים - אישים/יוצרים נוספים - מוסד)
+    logger.info("[MARC 700/710] Creating  MARC 700/710 - Personlities and Corporate bodies access points")
     collection.df_final_data = marc.create_MARC_700_710(collection.df_final_data)
 
     # create 655 (ARCHIVAL_MATERIAL) (סוג חומר)
