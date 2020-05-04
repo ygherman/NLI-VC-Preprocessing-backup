@@ -273,7 +273,15 @@ def find_role(name):
     name = name.strip()
     if "[" in name:
         start = name.find("[") + 1
-        return name[start : name.find("]")]
+        role = name[start: name.find("]")]
+        new_name = name.replace(role, "")
+        if new_name == "":
+            sys.stderr.write(
+                f"problem with creator: {name}, please check! This is the name: {new_name} and this is the role: {role}"
+            )
+            sys.exit()
+
+        return role
     else:
         return ""
 
@@ -342,7 +350,7 @@ def map_role_to_relator(role, df, lang, mode="PERS"):
             return df.loc[
                 df[df["CREATOR_PERS_ROLE"] == role].index.item(), "RELATOR_HEB"
             ]
-        if lang == "eng":
+        if lang == "lat" or lang == "eng":
             return df.loc[
                 df[df["CREATOR_PERS_ROLE"] == role].index.item(), "RELATOR_ENG"
             ]
@@ -352,7 +360,7 @@ def map_role_to_relator(role, df, lang, mode="PERS"):
                 df[df["CREATOR_CROPS_ROLE"] == role].index.item(), "RELATOR_HEB"
             ]
 
-        if lang == "eng":
+        if lang == "eng" or lang == "lat":
             return df.loc[
                 df[df["CREATOR_CROPS_ROLE"] == role].index.item(), "RELATOR_ENG"
             ]
@@ -517,7 +525,7 @@ def clean_creators(collection: Collection) -> Collection:
     ) + list(set(Authority_instance.df_creator_pers_role["CREATOR_PERS_ROLE"]))
 
     creators_cols = [col for col in df.columns if "CREATOR" in col]
-    if "COMBINED_CREATORS" in creators_cols:
+    if "COMBINED_CREATORS" in creators_cols and len(creators_cols):
         creators_cols.remove("COMBINED_CREATORS")
         logger.info("[CREATORS] COMBINED_CREATORS found: 1 creators column")
         for col in creators_cols:

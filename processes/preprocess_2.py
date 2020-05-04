@@ -93,7 +93,9 @@ def main():
     collection.df_final_data = marc.create_MARC_300(collection.df_final_data)
 
     # create 700 and 710 (added creators PERS and CORPS) (יוצרים נוספים - אישים/יוצרים נוספים - מוסד)
-    logger.info("[MARC 700/710] Creating  MARC 700/710 - Personlities and Corporate bodies access points")
+    logger.info(
+        "[MARC 700/710] Creating  MARC 700/710 - Personlities and Corporate bodies access points"
+    )
     collection.df_final_data = marc.create_MARC_700_710(collection.df_final_data)
 
     # create 655 (ARCHIVAL_MATERIAL) (סוג חומר)
@@ -197,7 +199,7 @@ def main():
     collection.df_final_data = marc.create_MARC_590(collection.df_final_data)
 
     # create MARC 561
-    logger.info("[MARC 561] Creating MARC  561 - Ownership and Custodial History")
+    logger.info("[MARC 942] Creating MARC  942 - Ownership and Custodial History")
     collection.df_final_data = marc.create_MARC_561(collection.df_final_data)
 
     collection.temp_preprocess_file(stage="POST")

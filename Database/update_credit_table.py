@@ -26,7 +26,7 @@ collection_table_field_mapper = {
     "סימול האוסף": "collection_id",
     "שם הארכיון": "name_heb",
     "שם הארכיון באנגלית": "name_eng",
-    "בעלים נוכחי": "current_owner",
+    "מיקום הפקדה בעלים נוכחי עבור": "current_owner",
     "קרדיט עברית": "credit_heb",
     "קרדיט אנגלית": "credit_eng",
 }
@@ -55,7 +55,7 @@ def replace_branch_with_fk(df):
 
 def main():
     pingstatus = check_vpn()
-    engine = create_engine("sqlite:///X:\\db\\NLI_VC_DB.db", echo=True)
+    engine = create_engine("sqlite:///X:\\db\\NLIVC_DB.db", echo=True)
     df = AuthorityFiles.Authority_instance.df_credits.rename(
         columns=collection_table_field_mapper
     )

@@ -244,6 +244,11 @@ def clean_catalog(df):
     df = remove_unnamed_cols(df)
     df = remove_trailing_zero(df)
     df = fill_missing_cataloging_date(df)
+    for col in list(df.columns):
+        df = columns.clean_text_cols(df, col)
+        df = columns.rstrip_semicolon(df, col)
+        df = columns.strip_whitespace_af_semicolon(df, col)
+
     return df
 
 
@@ -625,7 +630,7 @@ class Collection:
         ]
 
         if "קטלוג סופי" in self.dfs.keys():
-            if inspect.stack()[1] == 'preprocess_1':
+            if inspect.stack()[1] == "preprocess_1":
                 breakpoint
 
             self.df_final_data = remove_unnamed_cols(
@@ -785,6 +790,8 @@ class Collection:
 
                     # construct the line for the MARC sequantial file
                     line = f"{index} {col_name} {str(row[col])}\n"
+                    # if col_name == '035':
+                    line = line.replace("$$$$", "$$")
 
                     # write to file
                     f.write(line)

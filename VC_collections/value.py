@@ -162,7 +162,7 @@ def extract_years_from_text(date_text):
     if len(years) < 1:
         return None
     elif len(years) == 1:
-        return [years[0], years[0]]
+        return [years[0].strip(), years[0].strip()]
     else:
         return years
 

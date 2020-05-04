@@ -6,6 +6,7 @@
       <excludeFolder url="file://$MODULE_DIR$/.ipynb_checkpoints" />
       <excludeFolder url="file://$MODULE_DIR$/Database" />
       <excludeFolder url="file://$MODULE_DIR$/Gooey" />
+      <excludeFolder url="file://$MODULE_DIR$/build" />
       <excludeFolder url="file://$MODULE_DIR$/google_drive_api" />
     </content>
     <orderEntry type="jdk" jdkName="Python 3.7 (VC_Preprocessing)" jdkType="Python SDK" />
@@ -15,13 +16,10 @@
     <option name="requirementsPath" value="" />
   </component>
   <component name="PyDocumentationSettings">
+    <option name="format" value="EPYTEXT" />
     <option name="myDocStringFormat" value="Epytext" />
   </component>
   <component name="ReSTService">
-    <option name="workdir" value="$MODULE_DIR$" />
     <option name="DOC_DIR" value="$MODULE_DIR$" />
-  </component>
-  <component name="TestRunnerService">
-    <option name="PROJECT_TEST_RUNNER" value="Unittests" />
   </component>
 </module>

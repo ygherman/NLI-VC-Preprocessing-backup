@@ -3,7 +3,7 @@ from setuptools import setup
 setup(
     name="VC_Preprocessing",
     version="1.1",
-    packages=["data", "Gooey", "Database", "processes", "VC_collections"],
+    packages=["data", "Database", "processes", "VC_collections"],
     url="https://github.com/ygherman/NLI-VC-Preprocessing",
     license="MIT",
     author="Yael Gherman",

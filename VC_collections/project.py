@@ -196,11 +196,12 @@ def get_root_index_and_title(df, index):
         logger.error("[ERROR] no [סימול] column in table, check table")
         sys.exit()
 
-    root_call_number = ROOTID_finder(df.loc[index, "סימול"])
-    # root_index = df.index[df["סימול"] == root_call_number].tolist()[0]
+    # root_call_number = ROOTID_finder(df.loc[index, "סימול"])
+    # root_index = df.index[df["סימול"] == root_call_number].tolist()[0][
+    root_call_number = df.loc[index, "סימול אב"].strip()
 
     if root_call_number in check_col_series:
-        root_index = df.index[df["סימול"] == "FMD"][0]
+        root_index = df.index[df["סימול"] == root_call_number][0]
         title = df.loc[root_index, "24510"].strip("$$a")
     else:
         logger.error(

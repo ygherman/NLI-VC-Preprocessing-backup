@@ -169,8 +169,13 @@ def order_credits(df_credits):
 
 
 def create_privacy_mapping_dict(df_privacy_values):
-    return pd.Series(df_privacy_values.index.values,
-                     index=df_privacy_values.index.values).apply(lambda x: '$$f' + x)
+    privacy_mapping_dict = pd.Series(
+        df_privacy_values.index.values, index=df_privacy_values.index.values
+    ).apply(lambda x: "$$f" + x)
+    privacy_search_dict = pd.Series(
+        df_privacy_values.index.values, index=df_privacy_values.index.values
+    )
+    return privacy_mapping_dict, privacy_search_dict
 
 
 class Authority:
@@ -219,6 +224,7 @@ class Authority:
         cataloger_name_mapper = df_catalogers.to_dict()["קיצור אלף"]
 
         df_countries, countries_cols = create_df_from_gs(spreadsheet, "מדינת פרסום")
+
         roles_dict = {
             "pers_roles": df_creator_pers_role["CREATOR_PERS_ROLE"].tolist(),
             "corps_roles": df_creator_corps_role["CREATOR_CROPS_ROLE"].tolist(),
@@ -234,7 +240,9 @@ class Authority:
             spreadsheet, "מגבלות פרטיות"
         )
         df_privacy_values = df_privacy_values.set_index("מגבלות פרטיות")
-        privacy_mapping_dict = create_privacy_mapping_dict(df_privacy_values)
+        privacy_mapping_dict, privacy_search_dict = create_privacy_mapping_dict(
+            df_privacy_values
+        )
 
         df_level, level_cols = create_df_from_gs(spreadsheet, "רמת תיאור")
 
@@ -259,6 +267,7 @@ class Authority:
         self.df_credits = order_credits(df_credits)
         self.df_privacy_values = df_privacy_values
         self.privacy_mapping_dict = privacy_mapping_dict
+        self.privacy_search_dict = privacy_search_dict
 
 
 if __name__ != "__main__":

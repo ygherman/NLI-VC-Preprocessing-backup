@@ -3,7 +3,7 @@ from unittest import TestCase, main
 import pandas as pd
 
 
-class TestCreate_MARC_921_933(TestCase):
+class Test(TestCase):
     def test_create_MARC_921_933(self):
         test_df = pd.DataFrame(
             {
@@ -43,7 +43,6 @@ class TestCreate_MARC_921_933(TestCase):
         )
 
 
-class TestMore_than_value_in_cell(TestCase):
     def test_more_than_one_value_in_cell(self):
         from io import StringIO
         from VC_collections.marc import more_than_one_value_in_cell
@@ -63,13 +62,17 @@ col_name
         result = more_than_one_value_in_cell(data, "col_name")
         self.assertEqual(result, True)
 
-
-class TestCheck_date_values_in_row(TestCase):
     def test_check_date_values_in_row(self):
         from VC_collections.marc import extract_years_from_text
 
         self.assertEquals(extract_years_from_text("1930/1990"), ["1930", "1990"])
         self.assertEquals(extract_years_from_text("[בערך 1940-2018]"), ["1940", "2018"])
+
+    def test_update_008_from_260(self):
+        from VC_collections.marc import update_008_from_260
+        countries_correct = 'גרמניה;הולנד'
+        countries_false = 'ברלין, גרמניה'
+        self.assertEqual(update_008_from_260(countries_correct), (["$$agw", "$$ane"], 'gw#'))
 
 
 if __name__ == "__main__":

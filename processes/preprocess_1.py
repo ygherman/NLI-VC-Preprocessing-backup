@@ -92,7 +92,7 @@ def create_ROOT_id(df):
     if "ROOTID" in list(df.columns):
         logger.info("[ROOTID] Column exists")
         for index, row in df.loc[df.index[1:]].iterrows():
-            if row["ROOTID"] != '':
+            if row["ROOTID"] != "":
                 continue
             else:
                 df.loc[index, "ROOTID"] = ROOTID_finder(index)
@@ -100,7 +100,9 @@ def create_ROOT_id(df):
     else:
         logger.info("Creating ROOTIDs column")
         df["ROOTID"] = df.index
-        df.loc[df.index[1:], "ROOTID"] = df.loc[df.index[1:], "ROOTID"].apply(ROOTID_finder)
+        df.loc[df.index[1:], "ROOTID"] = df.loc[df.index[1:], "ROOTID"].apply(
+            ROOTID_finder
+        )
 
         # reset ROOTID of section record to null
         if len(df[df["LEVEL"] == "Section Record"]) == 1:
@@ -231,7 +233,15 @@ def clean_record_title(df):
     logger.info("[UNITITLE] Replacing first comma in title with hyphen")
     df.UNITITLE = df.UNITITLE.astype(str)
 
-    df["UNITITLE"] = df["UNITITLE"].apply(lambda x: x.replace(",", " -", 1))
+    def fix_title(title):
+        if title == "" or title == np.nan or title == " ":
+            return ""
+        return title.replace(",", " -", 1).lstrip().replace("\n", " ")
+
+    df["UNITITLE"] = df["UNITITLE"].apply(fix_title)
+    if "UNITITLE_ENG" in list(df.columns):
+        df["UNITITLE_ENG"] = df["UNITITLE_ENG"].apply(fix_title)
+
     return df
 
 
@@ -492,13 +502,13 @@ def check_date_columns(df):
                 )
             else:
                 try:
-                    early_date, late_date = extract_years_from_text(row["DATE"])
+                    early_date, late_date = extract_years_from_text(row["DATE"].strip())
                 except:
                     sys.stderr.write(f"Problem with index {index}")
 
                 if early_date is not None and late_date is not None:
-                    df.loc[index, "DATE_START"] = early_date
-                    df.loc[index, "DATE_END"] = late_date
+                    df.loc[index, "DATE_START"] = early_date.strip().lstrip("' ")
+                    df.loc[index, "DATE_END"] = late_date.strip().lstrip("' ")
     return df
 
 
