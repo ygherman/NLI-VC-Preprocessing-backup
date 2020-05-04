@@ -55,7 +55,14 @@ def create_MARC_093(df, collection_id):
     """
     df["093"] = df["סימול"].apply(lambda x: "$$c" + str(x).strip())
 
-    collection_name_heb = Authority_instance.df_credits.loc[collection_id, "שם הארכיון"]
+    try:
+        collection_name_heb = Authority_instance.df_credits.loc[
+            collection_id, "שם הארכיון"
+        ]
+    except:
+        sys.stderr.write(
+            f"There is no credit in the credits table for collection {collection_id} {collection_name_heb}"
+        )
     collection_name_eng = Authority_instance.df_credits.loc[
         collection_id, "שם הארכיון באנגלית"
     ]
@@ -400,7 +407,7 @@ def name_lang_check(val, mode="PERS"):
         val = "$$a" + find_name(val) + "$$9" + lang
 
     else:
-        val = "$$a" + find_name(val) + "$$e" + role + "$$9" + lang
+        val = "$$a" + find_name(val) + "$$9" + lang + "$$e" + role
 
     if val == "$$a$$9heb":
         return ""
@@ -499,9 +506,17 @@ def create_MARC_100_110(df):
 
 
 def create_MARC_710_current_owner(df):
-    df["בעלים נוכחי"] = df["בעלים נוכחי"].apply(
-        lambda x: x.rstrip() + "$$ecurrent owner" if x.strip() != "" else ""
-    )
+    logger = logging.Logger(__name__)
+    if "בעלים נוכחי" in list(df.columns):
+        df["בעלים נוכחי"] = df.loc[
+            df.loc[df["351"] == "$$cSection Record"].index[0], "בעלים נוכחי"
+        ]
+        df["בעלים נוכחי"] = df["בעלים נוכחי"].apply(
+            lambda x: x.rstrip() + "$$ecurrent owner" if x.strip() != "" else ""
+        )
+    else:
+        logger.info("[710 current owner] Current owner column doesn't exist.")
+        df["בעלים נוכחי"] = ""
     return df
 
 
@@ -811,7 +826,7 @@ def create_MARC_041(df):
                 df.loc[index, "041"] = "".join(new_lang)
             except:
                 print("problem with ", index)
-                sys.stderr(f"problem with languages in {index}")
+                sys.stderr.write(f"problem with languages in {index}")
             field_008 = list(row["008"])
 
             # insert MARC langauge code in positions 35-37
@@ -926,6 +941,7 @@ def extract_years_from_text(date_text):
 
 
 def check_date_values_in_row(date_start, date_end, date_free_text, index):
+
     if date_start != "" and date_end != "":
         return date_start, date_end
     elif date_free_text != "":
@@ -943,6 +959,30 @@ def check_date_values_in_row(date_start, date_end, date_free_text, index):
         return None, None
     else:
         return years[0], years[1]
+
+
+def update_008_from_260(countries_list: str) -> (list, str):
+    """
+
+    @param countries_list:
+    """
+    countries_code_mapper = Authority_instance.df_countries.set_index(
+        "מדינת פרסום"
+    ).to_dict()["MARC"]
+    countries = countries_list.split(";")
+    countries = list(filter(None, countries))
+    if len(countries) > 0:
+        try:
+            field_008_country = [
+                "$$a" + countries_code_mapper[k] for k in countries if len(k) > 0
+            ]
+        except KeyError as e:
+            sys.stderr.write(f"This is not a country {e}! (please correct")
+            sys.exit()
+        first_country = field_008_country[0][3:]
+        if len(first_country) == 2:
+            first_country += "#"
+    return field_008_country, first_country
 
 
 def create_MARC_260(df, col, date_cols):
@@ -979,22 +1019,12 @@ def create_MARC_260(df, col, date_cols):
 
     for index, row in df.iterrows():
         if row[col] != "" or row[col] is not None:
-
-            countries = row[col].split(";")
-            countries = list(filter(None, countries))
-            if len(countries) > 0:
-                field_008_country = [
-                    "$$a" + countries_code_mapper[k] for k in countries if len(k) > 0
-                ]
-                first_country = field_008_country[0][3:]
-                if len(first_country) == 2:
-                    first_country += "#"
-
-                df.loc[index, "044"] = "".join(field_008_country)
-            else:
-                first_country = (
-                    "xx#"  # code xx# is xx# No place, unknown, or undetermined
-                )
+            field_008_country, first_country = update_008_from_260(row[col])
+            df.loc[index, "044"] = "".join(field_008_country)
+        else:
+            first_country = (
+                "xx#"  # code xx# is xx# No place, unknown, or undetermined
+            )
 
             countries = ["$$e[" + x + "]" for x in countries]
 
@@ -1053,7 +1083,7 @@ def create_MARC_520(df):
     """
 
     df["520"] = df["תיאור"].apply(
-        lambda x: "$$a" + str(x).strip() if str(x) != "" else ""
+        lambda x: "$$a" + str(x).strip().replace("\n", " ") if str(x) != "" else ""
     )
     df = drop_col_if_exists(df, "תיאור")
     return df
@@ -1147,6 +1177,7 @@ def create_date_format(string_date):
         "%m/%d/%Y %H:%M:%S",
         "%Y%m%d %H:%M",
         "%d/%m/%Y %H:%M",
+        "%m/%d/%y %H:%M",
     ]
     i = 0
     while True:
