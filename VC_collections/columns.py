@@ -29,7 +29,7 @@ def remove_duplicate_in_column(df, col):
     :param col: the column in which to search form duplicate values
     :return: the duplicate free dataframe
     """
-
+    logger = logging.Logger(__name__)
     if col not in list(df.columns):
         return df
     for index, frame in df[col].iteritems():
@@ -40,6 +40,7 @@ def remove_duplicate_in_column(df, col):
             # check if there are duplicate values
             #             print('len old:', len(old_values_list), 'len new:',len(set(old_values_list)))
             if len(old_values_list) > len(set(old_values_list)):
+                logger.info(f"[{col}] Removing duplicates in {col} field. ")
 
                 print("There are duplicates in column {}, index {}".format(col, index))
                 pprint.pprint(

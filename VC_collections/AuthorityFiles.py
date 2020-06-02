@@ -32,6 +32,17 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 from VC_collections.files import create_df_from_gs
 
+mapper_655_to_999 = {
+    "טבלת חישובי שטחים": "CHART",
+    "תמונות נעות": "VIDEO FILE",
+    "שמע": "AUDIO FILE",
+    "תצלומים": "PHOTOGRAPH",
+    "תשריט": "MAP",
+    "מפת מדידה": "MAP",
+    "מפת תכנון": "MAP",
+    "מפה": "MAP",
+}
+
 
 def create_df_from_gs(spreadsheet, worksheet):
     """
@@ -234,7 +245,7 @@ class Authority:
         df_languages = df_languages.set_index("שם שפה עברית")
 
         df_credits, credits_col = create_df_from_gs(spreadsheet, "קרדיטים")
-        df_credits = df_credits.set_index("סימול האוסף")
+        df_credits = df_credits.set_index("סימול הארכיון")
 
         df_privacy_values, copyright_cols = create_df_from_gs(
             spreadsheet, "מגבלות פרטיות"
@@ -268,6 +279,7 @@ class Authority:
         self.df_privacy_values = df_privacy_values
         self.privacy_mapping_dict = privacy_mapping_dict
         self.privacy_search_dict = privacy_search_dict
+        self.mapper_655_to_999 = mapper_655_to_999
 
 
 if __name__ != "__main__":

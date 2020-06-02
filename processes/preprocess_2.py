@@ -96,11 +96,17 @@ def main():
     logger.info(
         "[MARC 700/710] Creating  MARC 700/710 - Personlities and Corporate bodies access points"
     )
-    collection.df_final_data = marc.create_MARC_700_710(collection.df_final_data)
+    collection.df_final_data = marc.create_MARC_700_710(
+        collection.df_final_data, Authority_instance.df_credits
+    )
+
+    # create 300 (EXTENT) (היקף)
+    logger.info("[MARC 535] Creating  MARC 535 - location of originals ")
+    collection.df_final_data = marc.create_MARC_535(collection.df_final_data)
 
     # create 655 (ARCHIVAL_MATERIAL) (סוג חומר)
     logger.info("[MARC 655] Creating  MARC 655 - ARCHIVAL MATERIAL ")
-    collection.df_final_data = marc.create_marc_655(collection.df_final_data)
+    collection.df_final_data = marc.create_MARC_655(collection.df_final_data)
 
     # create 041 (LANGUAGE) (שפה)
     logger.info("[MARC 041] Creating  MARC 041 - LANGUAGE")
@@ -198,9 +204,11 @@ def main():
     logger.info("[MARC 590] Creating MARC  590  - HIDDEN NOTES")
     collection.df_final_data = marc.create_MARC_590(collection.df_final_data)
 
-    # create MARC 561
-    logger.info("[MARC 942] Creating MARC  942 - Ownership and Custodial History")
-    collection.df_final_data = marc.create_MARC_561(collection.df_final_data)
+    # create MARC 9421 (formerly 561)
+    logger.info("[MARC 942] Creating MARC  942 - Ownership and Origial Call number")
+    collection.df_final_data = marc.create_MARC_942(collection.df_final_data)
+
+    # collection.df_final_data = marc.create_MARC_561(collection.df_final_data)
 
     collection.temp_preprocess_file(stage="POST")
 

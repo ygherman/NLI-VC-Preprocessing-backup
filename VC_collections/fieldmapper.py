@@ -23,7 +23,7 @@ VERSION
     $
 """
 
-field_mapper = {
+catalog_field_mapper = {
     "אוסףפתוח": "ACCURALS",
     "ביבליוגרפיהומקורותמידע": "BIBLIOGRAPHY",
     "ברקוד": "BARCODE",
@@ -227,6 +227,7 @@ level_mapper = {
 
 collection_field_mapper = {
     "סימול האוסף": "UNITID",
+    "סימול": "UNITID",
     "סימולהאוסף": "UNITID",
     "סימול מקורי": "ORIGINAL_ID",
     "סימולמקורי": "ORIGINAL_ID",
@@ -234,9 +235,11 @@ collection_field_mapper = {
     "רמתתיאור": "LEVEL",
     "שם האוסף": "UNITITLE",
     "שםהאוסף": "UNITITLE",
+    "כותרת": "UNITITLE",
     "תאריך חופשי": "DATE",
     "תאריךחופשי": "DATE",
     "יוצרי האוסף": "COLLECTION_CREATOR",
+    "יוצרים": "COLLECTION_CREATOR",
     "יוצריהאוסף": "COLLECTION_CREATOR",
     "תאריכים": "DATE",
     "מילותמפתחאישיליבה": "PERSNAME",
@@ -275,8 +278,12 @@ collection_field_mapper = {
     "חומריםקשורים": "RELATED_MATERIALS",
     "הערות - גלוי למשתמש קצה": "NOTES",
     "הערותגלוי למשתמש קצה": "NOTES",
+    "הערותגלוילמשתמשקצה": "NOTES",
+    "הערותלאגלוילמשתמשקצה": "NOTES_HIDDEN",
     "הערות - לא גלוי למשתמש קצה": "NOTES_HIDDEN",
     "שם הרושם": "CATALOGUER",
+    "שםהרושם": "CATALOGUER",
+    "תאריךהרישום": "DATE_CATALOGING",
     "תאריך הרישום": "DATE_CATALOGING",
     "הערותסוקר": "NOTES",
 }
@@ -336,6 +343,7 @@ final_fields_back_mapper = {
     "UNITITLE": "כותרת",
     "UNITITLE_ENG": "כותרת אנגלית",
     "WORKS": "מילות מפתח_יצירות",
+    "NUMBER_OF_FILES": "מספר קבצים לאחר דיגיטציה",
 }
 
 
@@ -371,6 +379,7 @@ final_column_order = [
     "מסלול דיגיטציה",
     "סריקה דו-צדדית",
     "מספר קבצים מוערך",
+    "מספר קבצים לאחר דיגיטציה",
     "שפה",
     "היקף החומר",
     "משך",
@@ -459,7 +468,7 @@ field_types_dict = {
 
 class FieldMapper:
     def __init__(self):
-        self.field_mapper = field_mapper
+        self.field_mapper = catalog_field_mapper
         self.field_mapper_back = field_mapper_back
         self.level_mapper = level_mapper
         self.collection_field_mapper = collection_field_mapper

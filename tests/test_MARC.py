@@ -3,7 +3,7 @@ from unittest import TestCase, main
 import pandas as pd
 
 
-class Test(TestCase):
+class Test_MARC(TestCase):
     def test_create_MARC_921_933(self):
         test_df = pd.DataFrame(
             {
@@ -42,7 +42,6 @@ class Test(TestCase):
             }
         )
 
-
     def test_more_than_one_value_in_cell(self):
         from io import StringIO
         from VC_collections.marc import more_than_one_value_in_cell
@@ -70,10 +69,49 @@ col_name
 
     def test_update_008_from_260(self):
         from VC_collections.marc import update_008_from_260
-        countries_correct = 'גרמניה;הולנד'
-        countries_false = 'ברלין, גרמניה'
-        self.assertEqual(update_008_from_260(countries_correct), (["$$agw", "$$ane"], 'gw#'))
+
+        countries_correct = "גרמניה;הולנד"
+        countries_false = "ברלין, גרמניה"
+        self.assertEqual(
+            update_008_from_260(countries_correct), (["$$agw", "$$ane"], "gw#")
+        )
+
+    def test_create_marc_999_values_list(self):
+        from VC_collections.marc import create_MARC_999_values_list
+
+        list_999_values_test = ["תצלומים", "שמע", "תשריט", "מפת מדידה"]
+        self.assertEqual(
+            create_MARC_999_values_list(list_999_values_test),
+            [
+                "$$aAUDIO FILE (AUDIO FILE)",
+                "$$aPHOTOGRAPH (PHOTOGRAPH)",
+                "$$aMAP (MAP)",
+            ],
+        )
+
+    def test_create_710_current_owner_val(self):
+        from VC_collections.marc import create_710_current_owner_val
+
+        eng = "Goor Archive"
+        heb = "ארכיון גור"
+        self.assertEqual(
+            "$$aארכיון גור$$9heb$$ecurrent owner", create_710_current_owner_val(heb)
+        )
+        self.assertEqual(
+            "$$aGoor Archive$$9eng$$ecurrent owner", create_710_current_owner_val(eng)
+        )
+
+    def test_create_marc_655(self):
+        from VC_collections.marc import create_MARC_655
+
+        xl = pd.ExcelFile("Resources/ArBe_test_data.xlsx")
+        test_df = xl.parse("קטלוג")
+        test_655 = test_df["סוג חומר"]
 
 
 if __name__ == "__main__":
     main()
+
+
+class Test(TestCase):
+    self.fail()

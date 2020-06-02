@@ -17,7 +17,8 @@ from oauth2client.service_account import ServiceAccountCredentials
 from pymarc import XMLWriter, Record, Field
 
 from . import columns
-from .fieldmapper import field_mapper
+from .AuthorityFiles import Authority_instance
+from .fieldmapper import catalog_field_mapper, collection_field_mapper
 from .files import create_directory, write_excel
 from .files import get_google_drive_api_path
 from .project import get_branch_colletionID
@@ -260,26 +261,37 @@ def strip_column_name(cols_names):
     return new_columns_names
 
 
-def map_field_names_to_english(col_names: list) -> list:
+def map_field_names_to_english(col_names: list, mapper) -> list:
     # replace the field name according to the generic field mapper
-    ad = AlphabetDetector()
-    # new_col_names = map(field_mapper.get, col_names)
     print("col_names:", col_names)
-    new_col_names = [col for col in col_names]
-
     try:
-        new_col_names = [field_mapper.get(x, "no mapping").upper() for x in col_names]
+        new_col_names = [mapper.get(x, "no mapping").upper() for x in col_names]
         if "NO MAPPING" in new_col_names:
             print(
                 "columns not mapped:",
-                "\n".join([f"{x}: {field_mapper.get(x)}" for x in col_names]),
+                "\n".join([f"{x}: {mapper.get(x)}" for x in col_names]),
             )
-
     except:
         for col in col_names:
-            sys.stderr(f"{col} - does not exist")
+            sys.stderr.write(f"{col} - does not exist")
         sys.exit()
     return new_col_names
+
+
+def add_current_owner(df_collection, df_credits, collection_id):
+    df_collection = df_collection.set_index("סימול האוסף")
+    if (
+            "בעלים נוכחי" in list(df_collection.columns)
+            and df_collection.loc[df_collection["רמת תיאור"] == "אוסף", "בעלים נוכחי"][0]
+            != ""
+    ):
+        if df_credits.loc[collection_id, "מיקום הפקדה עבור בעלים נוכחי"] != "":
+            df_collection.loc[collection_id, "בעלים נוכחי"] = df_credits.loc[
+                collection_id, "מיקום הפקדה עבור בעלים נוכחי"
+            ]
+            return df_collection
+
+    return df_collection.reset_index()
 
 
 class Collection:
@@ -328,13 +340,18 @@ class Collection:
                 return None
 
     @staticmethod
-    def replace_table_column_names(df):
+    def replace_table_column_names(df, type):
         """
             The function replaces the column header names according to the field mapper dictionary.
-            This is in order to create a unified table with the same structure and column names.
+            This is in order to create a unified table with the same structure and columnnames.
         :param df: original dataframe
         :return: the modified dataframe with the new column headers
         """
+        if type == "catalog":
+            mapper = catalog_field_mapper
+        elif type == "collection":
+            mapper = collection_field_mapper
+
         logger = logging.getLogger(__name__)
         logger.info(
             "[HEADERS] strip column names from special characters and whitespaces."
@@ -343,11 +360,10 @@ class Collection:
         logger.info(
             f"[HEADERS] Changing Hebrew column names into English - according to field_mapper."
         )
-        df.columns = map_field_names_to_english(list(df.columns))
+        df.columns = map_field_names_to_english(list(df.columns), mapper)
         df = remove_unnamed_cols(df)
         return df
 
-    @staticmethod
     def make_one_table(self):
         """
             creates one table by merging the catalog and the collection tables.
@@ -357,10 +373,10 @@ class Collection:
         # turn index to string
         self.df_collection.index = self.df_collection.index.map(str)
         df_catalog = self.replace_table_column_names(
-            remove_unnamed_cols(self.df_catalog)
+            remove_unnamed_cols(self.df_catalog), type="catalog"
         )
         df_collection = self.replace_table_column_names(
-            remove_unnamed_cols(self.df_collection)
+            remove_unnamed_cols(self.df_collection), type="collection"
         )
         df_collection = columns.drop_col_if_exists(df_collection, "מספרמערכתבאלף")
 
@@ -372,18 +388,21 @@ class Collection:
             "df_collection columns:",
             "\n".join([f"{i}: {x}" for i, x in enumerate(list(df_collection.columns))]),
         )
+        if "UNITID" not in list(df_collection.columns):
+            df_collection.index.name = "UNITID"
+        df_collection = df_collection.reset_index()
 
         try:
             combined_catalog = pd.concat([df_collection, df_catalog], axis=0, sort=True)
         except:
-            sys.exit()
 
-        assert (
-                combined_catalog is not None
-        ), "the Collection and Catalog dataframes could not be combined"
-        combined_catalog = remove_unnamed_cols(combined_catalog)
-        combined_catalog = combined_catalog.set_index("UNITID")
-        combined_catalog.index = combined_catalog.index.map(str)
+            assert (
+                    combined_catalog is not None
+            ), "the Collection and Catalog dataframes could not be combined"
+            combined_catalog = remove_unnamed_cols(combined_catalog)
+            combined_catalog = combined_catalog.set_index("UNITID")
+            combined_catalog.index = combined_catalog.index.map(str)
+            sys.exit()
 
         return combined_catalog
 
@@ -541,6 +560,7 @@ class Collection:
         :param branch: The name of the project branch the collection belongs to (Architect , Design, Dance, Theater)
         :param collection_id: The collection identifier (call number)
         """
+        Authority_instance
 
         self.cms = CMS
         self.branch = branch
@@ -608,6 +628,9 @@ class Collection:
         self.df_collection = remove_instructions_row(
             remove_empty_rows(self.dfs["אוסף"])
         )
+        self.df_collection = add_current_owner(
+            self.df_collection, Authority_instance.df_credits, self.collection_id
+        )
         self.df_personalities = remove_instructions_row(
             remove_empty_rows(self.dfs["אישים"])
         )
@@ -621,7 +644,7 @@ class Collection:
         except:
             pass
 
-        self.full_catalog = self.make_one_table(self)
+        self.full_catalog = self.make_one_table()
 
         self.all_tables = [
             type(getattr(self, name)).__name__
@@ -647,6 +670,9 @@ class Collection:
                 )
             )
             # print(f'column of קטלוג סופי are: {[index, col for (index, col) in enumrate(self.dfs.columns)]}'
+            self.df_final_data.rename(
+                columns={self.df_final_data.columns[0]: "mms_id"}, inplace=True
+            )
             self.df_final_data = self.df_final_data.set_index("mms_id")
 
         # turn headers to English
@@ -792,6 +818,7 @@ class Collection:
                     line = f"{index} {col_name} {str(row[col])}\n"
                     # if col_name == '035':
                     line = line.replace("$$$$", "$$")
+                    line = line.replace("$$a$$a", "$$")
 
                     # write to file
                     f.write(line)

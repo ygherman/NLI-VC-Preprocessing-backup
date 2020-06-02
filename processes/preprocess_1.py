@@ -6,17 +6,19 @@ from df2gspread import df2gspread as d2g
 from xml.dom import minidom
 
 from VC_collections.fieldmapper import (
-    field_mapper,
+    catalog_field_mapper,
+    collection_field_mapper,
     level_mapper,
     final_fields_back_mapper,
     final_column_order,
 )
 from VC_collections.logger import initialize_logger
+from VC_collections.marc import create_907_dict
 
 sys.path.insert(
     1, "C:/Users/Yaelg/Google Drive/National_Library/Python/VC_Preprocessing"
 )
-from VC_collections.project import ROOTID_finder, get_alma_sid
+from VC_collections.project import ROOTID_finder, get_alma_sid, lookup_rosetta_file
 from VC_collections.columns import *
 from VC_collections.value import *
 
@@ -143,13 +145,13 @@ def clean_headers(df):
     return df
 
 
-def drop_cols_not_in_mapping(df):
+def drop_cols_not_in_mapping(df, mapper):
     ad = AlphabetDetector()
     for header in list(df.columns):
-        if ad.is_hebrew(header) and clean_text(header) not in list(field_mapper.keys()):
+        if ad.is_hebrew(header) and clean_text(header) not in list(mapper.keys()):
             df = drop_col_if_exists(df, header)
 
-        if ad.is_latin(header) and header not in list(field_mapper.values()):
+        if ad.is_latin(header) and header not in list(mapper.values()):
             df = drop_col_if_exists(df, header)
     return df
 
@@ -525,6 +527,44 @@ def check_cataloging_date(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def find_907_number_of_file(dict_907):
+    if "907i" in dict_907.keys():
+        return dict_907["907i"]
+    else:
+        return ""
+
+
+def add_number_of_files(collection):
+    rosetta_file_path = lookup_rosetta_file(
+        collection.digitization_path, collection.collection_id
+    )
+    rosetta_file = minidom.parse(rosetta_file_path)
+
+    df = collection.full_catalog
+    rosetta_dict = create_907_dict(rosetta_file)
+    for index, row in df.iterrows():
+        try:
+            if index == np.nan:
+                sys.stderr.write(f"this index: {index} for {row['סימול']} is missing")
+            elif str(index) not in rosetta_dict.keys():
+                sys.stderr.write(
+                    f"there is no 907 field for : {index}, for call number {row['סימול']}\n."
+                )
+                sys.exit()
+            elif len(rosetta_dict[str(index)]) == 0:
+                continue
+            else:
+                df.loc[index, "מספר קבצים לאחר דיגיטציה"] = find_907_number_of_file(
+                    rosetta_dict[str(index)]
+                )
+        except:
+            pass
+
+    collection.df_final_data = df
+
+    return collection
+
+
 def main():
     start_time = timeit.default_timer()
 
@@ -533,7 +573,6 @@ def main():
     # collection = Collection(CMS, branch, collection_id)
 
     collection = retrieve_collection()
-
     """ initialize logger for the logging file for that collection"""
     initialize_logger(collection.branch, collection.collection_id)
     logger = logging.getLogger(__name__)
@@ -544,7 +583,13 @@ def main():
     logger.info(
         f"[HEADERS] Dropping columns not in mapping for {collection.collection_id} Catalog, at: {datetime.now()}"
     )
-    collection.full_catalog = drop_cols_not_in_mapping(collection.full_catalog)
+
+    field_mappers = {}
+    field_mappers.update(collection_field_mapper)
+    field_mappers.update(catalog_field_mapper)
+    collection.full_catalog = drop_cols_not_in_mapping(
+        collection.full_catalog, field_mappers
+    )
 
     collection = clean_tables(collection)
     if hasattr(collection, "full_catalog"):
@@ -575,6 +620,7 @@ def main():
     collection.full_catalog = create_ROOT_id(collection.full_catalog)
 
     logger.info(f"[ACCESSRESTRICT] cheecking columns values")
+
     collection.full_catalog = check_values_against_cvoc(
         collection.full_catalog,
         "ACCESSRESTRICT",
@@ -604,6 +650,21 @@ def main():
 
     logger.info("[DATES] Validating dates")
     collection.full_catalog = check_date_columns(collection.full_catalog)
+    logger.info("[DATES] cleaning dates - start date")
+    collection.full_catalog["DATE_START"] = (
+        collection.full_catalog["DATE_START"]
+            .astype(str)
+            .replace(r"\.0$", "", regex=True)
+            .apply(clean_date_format)
+    )
+    logger.info("[DATES] cleaning dates - end date")
+    collection.full_catalog["DATE_END"] = (
+        collection.full_catalog["DATE_END"]
+            .astype(str)
+            .replace(r"\.0$", "", regex=True)
+            .apply(clean_date_format)
+
+    )
 
     logger.info(
         f"[COMBINED_CREATORS] CREATING COMBINED CREATORS for {collection.collection_id} , at: {datetime.now()}"
@@ -672,6 +733,9 @@ def main():
             df_missing_records_in_alma.reset_index().set_index("סימול"), "001"
         )
         update_df_in_gdrive(collection, worksheet_name="מספרי מערכת חסרים", copy=False)
+
+    logger.info(f"Adding the Number of digitization files - as a column to the table")
+    collection = add_number_of_files(collection)
 
     logger.info(
         f"updating the preprocessed DataFrame in Google Sheets - "

@@ -22,6 +22,7 @@ VERSION
     
     $
 """
+import logging
 import re
 import sys
 from datetime import datetime
@@ -129,6 +130,95 @@ clean_text = lambda x: "".join(e for e in str(x) if e.isalnum())
 whiteSpaceStriper = lambda x: x.strip()
 
 clean_name = lambda x: re.sub(r"(?<=[.,])(?=[^\s])", r" ", x)
+
+
+def clean_date_format(string_date):
+    logger = logging.getLogger(__name__)
+    string_date_to_datetime = ""
+    date_formats_type1 = [
+        "%Y-%m-%d",
+        "%Y-%d-%m",
+        "%Y-%-m-%d",
+        "%Y-%m-%-d",
+        "%Y-%-m-%-d",
+        "%Y-%m-%d %H:%M",
+        "%d-%m-%Y",
+        "%Y-%m-%d %H:%M:%S",
+        "%d/%m/%Y",
+        "%m/%d/%Y",
+        "%m/%d/%Y %H:%M:%S",
+        "%m/%d/%Y %H:%M:%S",
+        "%Y%m%d %H:%M",
+        "%d/%m/%Y %H:%M",
+        "%m/%d/%y %H:%M",
+        "%d-%m-%Y",
+    ]
+
+    date_formats_6 = [
+        "%Y-%m",
+        "%Y-%-m",
+        "%m-%Y",
+        "%-m-%Y",
+        "%m/%Y",
+        "%-m/%Y",
+        "%Y/%m",
+        "%Y/%-m",
+    ]
+
+    date_formats_4 = ["%Y"]
+
+    i = 0
+    date_to_clean = list()
+    string_date_clean = str(string_date).strip()
+
+    if len(string_date_clean) < 5:
+        try:
+            string_date_to_datetime = datetime.strptime(string_date_clean, "%Y")
+            return datetime.strftime(string_date_to_datetime, "%Y")
+        except:
+            logger.error(
+                f"[DATEs - only years] didn't find the right date format for [{string_date_clean}]"
+            )
+            date_to_clean.append(string_date_clean)
+
+    if 6 <= len(string_date_clean) < 8:
+        i = 0
+        while True:
+            try:
+                string_date_to_datetime = datetime.strptime(
+                    string_date_clean, date_formats_6[i]
+                )
+                return datetime.strftime(string_date_to_datetime, "%Y-%m")
+            except ValueError:
+                i += 1
+            except IndexError:
+                logger.error(
+                    f"[DATEs] didn't find the right date format for [{string_date_clean}]"
+                )
+                date_to_clean.append(string_date_clean)
+                break
+
+    else:
+        while True:
+            try:
+                string_date_to_datetime = datetime.strptime(
+                    string_date_clean, date_formats_type1[i]
+                )
+                break
+            except ValueError:
+                i += 1
+            except IndexError:
+                logger.error(
+                    f"[DATEs_type1] didn't find the right date format for [{string_date_clean}]"
+                )
+                date_to_clean.append(string_date_clean)
+                break
+    if len(date_to_clean) > 0:
+        sys.stderr.write(
+            f"Please clean these dates: {date_to_clean}\n And re-run application"
+        )
+        sys.exit()
+    return datetime.strftime(string_date_to_datetime, "%Y-%m-%d")
 
 
 def replace_lst_dict(lst, dictionary):
