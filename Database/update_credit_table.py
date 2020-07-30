@@ -1,8 +1,14 @@
-from sqlalchemy import create_engine, exists
-import pandas as pd
+import logging
+import os
 import sys
-import logging, os, time
+import time
+
+import pandas as pd
+import pandasbase
 from VC_collections.columns import drop_col_if_exists
+from sqlalchemy import create_engine, exists
+
+from vpn import check_vpn
 
 sys.path.insert(
     1, r"C:\Users\Yaelg\Google Drive\National_Library\Python\VC_Preprocessing"
@@ -23,29 +29,13 @@ branches = {
 
 collection_table_field_mapper = {
     "אשכול": "branch",
-    "סימול האוסף": "collection_id",
+    "סימול הארכיון": "collection_id",
     "שם הארכיון": "name_heb",
     "שם הארכיון באנגלית": "name_eng",
-    "מיקום הפקדה בעלים נוכחי עבור": "current_owner",
+    "מיקום הפקדה עבור בעלים נוכחי": "current_owner",
     "קרדיט עברית": "credit_heb",
     "קרדיט אנגלית": "credit_eng",
 }
-
-
-def check_vpn():
-
-    PING_HOST = "172.0.12.30"  # some host on the other side of the VPN
-
-    response = os.system(f"ping {PING_HOST}")
-
-    if response == 0:
-        pingstatus = "Network Active"
-    else:
-        pingstatus = "Network Error"
-        logging.warning("Network Error")
-        sys.exit()
-
-    return pingstatus
 
 
 def replace_branch_with_fk(df):
@@ -55,15 +45,15 @@ def replace_branch_with_fk(df):
 
 def main():
     pingstatus = check_vpn()
-    engine = create_engine("sqlite:///X:\\db\\NLIVC_DB.db", echo=True)
-    df = AuthorityFiles.Authority_instance.df_credits.rename(
-        columns=collection_table_field_mapper
-    )
+    engine = create_engine(r"sqlite:///\\172.0.12.30\Visual_Art\Master_Catalog\NLI_VC_DB.db", echo=True)
+    df = AuthorityFiles.Authority_instance.df_credits
+    df = df.rename(columns=collection_table_field_mapper)
     cols = [
         col for col in list(df.columns) if col in collection_table_field_mapper.values()
     ]
     df_final = df[cols]
     df_final.index.name = "collection_id"
+
 
     df_final = replace_branch_with_fk(df_final)
 

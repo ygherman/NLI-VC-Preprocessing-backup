@@ -1,16 +1,18 @@
-from sqlalchemy import create_engine, exists
-import pandas as pd
+import logging
+import os
 import sys
-import logging, os, time
-from VC_collections.columns import drop_col_if_exists
-from tabulate import tabulate
+import time
 
+import pandas as pd
+from VC_collections.columns import drop_col_if_exists
+from sqlalchemy import create_engine, exists
+from tabulate import tabulate
+from vpn import check_vpn
 
 sys.path.insert(
     1, r"C:\Users\Yaelg\Google Drive\National_Library\Python\VC_Preprocessing"
 )
 from VC_collections import AuthorityFiles
-
 
 branches = {
     "1": {"name_heb": "אדריכלות", "name_eng": "Architecture"},
@@ -36,27 +38,11 @@ branches = {
 }
 
 
-def check_vpn():
-
-    PING_HOST = "172.0.12.30"  # some host on the other side of the VPN
-
-    response = os.system(f"ping {PING_HOST}")
-
-    if response == 0:
-        pingstatus = "Network Active"
-    else:
-        pingstatus = "Network Error"
-        logging.warning("Network Error")
-        sys.exit()
-
-    return pingstatus
-
-
 def main():
     pdtabulate = lambda df: tabulate(df, headers="keys", tablefmt="psql")
 
     pingstatus = check_vpn()
-    engine = create_engine("sqlite:///X:\\db\\NLI_VC_DB.db", echo=True)
+    engine = create_engine(r"sqlite:///\\172.0.12.30\Visual_Art\Master_Catalog\NLI_VC_DB.db", echo=True)
     df = pd.DataFrame(branches, columns=branches.keys())
     df = df.transpose()
 

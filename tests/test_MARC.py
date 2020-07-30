@@ -108,10 +108,15 @@ col_name
         test_df = xl.parse("קטלוג")
         test_655 = test_df["סוג חומר"]
 
+    def test_create_marc_942(self):
+        from VC_collections.marc import create_MARC_942
+
+        xl = pd.ExcelFile("Resources/ArHb_test_data.xlsx")
+        test_df = xl.parse("קטלוג")
+        df = create_MARC_942(test_df, "ArHb")
+
+        self.fail()
+
 
 if __name__ == "__main__":
     main()
-
-
-class Test(TestCase):
-    self.fail()

@@ -215,9 +215,10 @@ def clean_date_format(string_date):
                 break
     if len(date_to_clean) > 0:
         sys.stderr.write(
-            f"Please clean these dates: {date_to_clean}\n And re-run application"
+            f"Please clean these dates: {date_to_clean}\n And re-run application\n\n"
         )
-        sys.exit()
+        input("Write this Down!\n")
+        return string_date
     return datetime.strftime(string_date_to_datetime, "%Y-%m-%d")
 
 

@@ -76,7 +76,7 @@ def main():
         cursor.execute("PRAGMA case_sensitive_like = OFF")
         db.bind(
             provider="sqlite",
-            filename=r"\\172.0.12.30\Visual_Art\DB\NLIVC_DB.db",
+            filename=r"\\172.0.12.30\Visual_Art\Master_Catalog\NLIVC_DB.db",
             create_db=False,
         )
         db.generate_mapping(create_tables=True)

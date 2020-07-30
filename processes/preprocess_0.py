@@ -33,6 +33,9 @@ def create_mmsid_dict(ROS_file: minidom) -> dict:
             if e.attributes["tag"].value == "093":
                 for sb in e.getElementsByTagName("subfield"):
                     dd["093" + sb.attributes["code"].value] = sb.childNodes[0].data
+            if e.attributes["tag"].value == "911":
+                for sb in e.getElementsByTagName("subfield"):
+                    dd["911" + sb.attributes["code"].value] = sb.childNodes[0].data
         d[id] = dd
     return d
 

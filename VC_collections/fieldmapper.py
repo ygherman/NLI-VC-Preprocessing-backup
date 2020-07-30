@@ -39,6 +39,7 @@ catalog_field_mapper = {
     "הערותלאגלוילמשתמשקצה": "NOTES_HIDDEN",
     "הערותחסויותלמשתמש": "NOTES_HIDDEN",
     "הערותלאגלוילמשתמש": "NOTES_HIDDEN",
+    "הערותגלויותלמשתמש": "NOTES",
     "חומריםקשורים": "RELATED_MATERIALS",
     "טכניקה": "TECHNIQUE",
     "יוצרים": "COMBINED_CREATORS",
@@ -114,6 +115,7 @@ catalog_field_mapper = {
     "שםהאוסף": "UNITITLE",
     "שםהמקטלג": "CATALOGUER",
     "שםהרושם": "CATALOGUER",
+    "שםרושם": "CATALOGUER",
     "שםיוצרתאגיד": "FIRST_CREATOR_CORP",
     "שםיוצרראשימוסד": "FIRST_CREATOR_CORP",
     "שםיוצרמוסד": "FIRST_CREATOR_CORP",
@@ -141,9 +143,18 @@ catalog_field_mapper = {
     "תיאורהחומרבפרויקטתרבותחזותיתואמנויותהבמה": "APPRAISAL",
     "תיאורהטיפולבאוסףבפרויקט": "APPRAISAL",
     "הערותפנימיותלטיובסריקות": "NOTES_SCAN_LINK_REPAIR",
-    "הערות פנימיות לטיוב": "NOTES_SCAN_LINK_REPAIR",
+    "הערותפנימיותלטיוב": "NOTES_SCAN_LINK_REPAIR",
     "סימוללטיוב": "CALL_NUM_TO_LINK_REPAIR",
     "לסימול": "CALL_NUM_TO_LINK_REPAIR",
+    "IE_to_delete": 'IE_TO_DELETE',
+    "IEtodelete": 'IE_TO_DELETE',
+
+    "למחיקהIE": 'IE_TO_DELETE',
+    "IE_to_export": "IE_TO_EXPORT",
+    "IEtoexport": "IE_TO_EXPORT",
+
+    "IEלייצוא": "IE_TO_EXPORT"
+
 }
 
 field_mapper_back = {
@@ -235,6 +246,7 @@ collection_field_mapper = {
     "רמתתיאור": "LEVEL",
     "שם האוסף": "UNITITLE",
     "שםהאוסף": "UNITITLE",
+    "שםהאוסףבאנגלית": "UNITITLE_ENG",
     "כותרת": "UNITITLE",
     "תאריך חופשי": "DATE",
     "תאריךחופשי": "DATE",

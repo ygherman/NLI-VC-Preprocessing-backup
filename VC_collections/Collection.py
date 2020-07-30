@@ -261,7 +261,7 @@ def strip_column_name(cols_names):
     return new_columns_names
 
 
-def map_field_names_to_english(col_names: list, mapper) -> list:
+def map_field_names_to_english(col_names: list, mapper: dict) -> list:
     # replace the field name according to the generic field mapper
     print("col_names:", col_names)
     try:
@@ -390,10 +390,19 @@ class Collection:
         )
         if "UNITID" not in list(df_collection.columns):
             df_collection.index.name = "UNITID"
-        df_collection = df_collection.reset_index()
+            df_collection = df_collection.reset_index()
+        # else:
+        #     df_collection.set_index("UNITID", inplace=True)
+
+        if "UNITID" not in list(df_catalog.columns):
+            df_catalog.index.name = "UNITID"
+        # else:
+        #     # df_catalog.set_index("UNITID", inplace=True)
 
         try:
             combined_catalog = pd.concat([df_collection, df_catalog], axis=0, sort=True)
+            # combined_catalog = df_collection.reset_index()
+
         except:
 
             assert (

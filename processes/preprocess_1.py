@@ -3,6 +3,7 @@ import timeit
 
 from alphabet_detector import AlphabetDetector
 from df2gspread import df2gspread as d2g
+from tqdm import tqdm
 from xml.dom import minidom
 
 from VC_collections.fieldmapper import (
@@ -100,6 +101,7 @@ def create_ROOT_id(df):
                 df.loc[index, "ROOTID"] = ROOTID_finder(index)
         return df
     else:
+        logger.info("[ROOTID] Column doesn't exist - creating")
         logger.info("Creating ROOTIDs column")
         df["ROOTID"] = df.index
         df.loc[df.index[1:], "ROOTID"] = df.loc[df.index[1:], "ROOTID"].apply(
@@ -480,7 +482,7 @@ def fill_default_ACCESSRESTIRCT(df):
     :param df: original
     :return:
     """
-
+    df.replace('', np.nan)
     mask = pd.isna(df["ACCESSRESTRICT"]) & (
         (df["LEVEL"] == "תיק") | (df["LEVEL"] == "פריט")
     )
@@ -497,20 +499,29 @@ def check_date_columns(df):
     )
     test_df = df[mask]
     if len(test_df) != 0:
+        dates_to_correct = dict()
         for index, row in test_df.iterrows():
             if row["DATE"] == "":
                 sys.stderr.write(
                     f"[ERROR]  No DATE Values! Please check data at index: {index}"
                 )
             else:
+
                 try:
                     early_date, late_date = extract_years_from_text(row["DATE"].strip())
                 except:
+                    dates_to_correct[index] = (row["DATE"])
                     sys.stderr.write(f"Problem with index {index}")
+                try:
+                    if early_date is not None and late_date is not None:
+                        df.loc[index, "DATE_START"] = early_date.strip().lstrip("' ")
+                        df.loc[index, "DATE_END"] = late_date.strip().lstrip("' ")
+                except:
+                    continue
+        if len(dates_to_correct) > 0:
+            sys.stderr.write(f"[Error] Please correct the following dates: {dates_to_correct}")
+            sys.exit()
 
-                if early_date is not None and late_date is not None:
-                    df.loc[index, "DATE_START"] = early_date.strip().lstrip("' ")
-                    df.loc[index, "DATE_END"] = late_date.strip().lstrip("' ")
     return df
 
 
@@ -618,6 +629,8 @@ def main():
     assert collection.full_catalog.index.name == "UNITID"
 
     collection.full_catalog = create_ROOT_id(collection.full_catalog)
+
+    check_missing_rootids(collection)
 
     logger.info(f"[ACCESSRESTRICT] cheecking columns values")
 
@@ -755,4 +768,11 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    while True:
+        main()
+        batch = input("Run another collection through Preprocess-1? (Y/N) ")
+        if batch.strip().lower() != "y":
+            sys.stdout.write("Ending run!")
+            sys.exit()
+        logger.handlers = []
+        logging.shutdown()

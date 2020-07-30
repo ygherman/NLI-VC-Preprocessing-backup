@@ -2,6 +2,8 @@ import sys
 import time
 import timeit
 
+from tqdm import tqdm
+
 from VC_collections import marc
 from VC_collections.logger import initialize_logger
 
@@ -26,6 +28,7 @@ def main():
     collection = retrieve_collection()
 
     """ initialize logger for the logging file for that collection"""
+
     initialize_logger(collection.branch, collection.collection_id)
     logger = logging.getLogger(__name__)
     logger.info(
@@ -71,6 +74,10 @@ def main():
     #     collection.collection_id,
     #     collection.df_final_data,
     # )
+
+    # create MARC 091
+    logger.info(f"[091] Create MARC 091 Field")
+    collection.df_final_data = marc.create_MARC_091(collection.df_final_data)
 
     # create 008
     logger.info(f"[008] Creating  MARC 008 field")
@@ -130,15 +137,19 @@ def main():
 
     # create 260 (DATE fields, and PUBLICATION_COUNTRY) (מדינת פרסום, תאריך מנורמל מוקדם, תאריך מנורמל מאוחר)
     logger.info(
-        "[MARC 260] Creating  MARC 260 $g $e - DATE (free text), and publication country."
+        "[MARC 260/008 DATES] Creating  MARC 260 $g $e - DATE (free text), and publication country."
         " Updates MARC 008"
     )
+    collection.df_final_data = marc.create_MARC_260_008_date(
+        collection.df_final_data, "תאריך מנורמל מוקדם", "תאריך מנורמל מאוחר", "תאריך חופשי")
 
-    collection.df_final_data = marc.create_MARC_260(
-        collection.df_final_data,
-        "מדינת הפרסום/הצילום",
-        ["תאריך מנורמל מוקדם", "תאריך מנורמל מאוחר", "תאריך חופשי"],
+    # create 260 (DATE fields, and PUBLICATION_COUNTRY) (מדינת פרסום, תאריך מנורמל מוקדם, תאריך מנורמל מאוחר)
+    logger.info(
+        "[MARC 260/008/044 COUNTRIES] Creating  MARC 260 $g $e - DATE (free text), and publication country."
+        " Updates MARC 008"
     )
+    collection.df_final_data = marc.create_MARC_260_044_008_countries(
+        collection.df_final_data, 'מדינת הפרסום/הצילום')
 
     logger.info("[MARC 952] Creating MARC 952 - Privacy")
     collection.df_final_data = marc.create_MARC_952(collection.df_final_data)
@@ -206,7 +217,7 @@ def main():
 
     # create MARC 9421 (formerly 561)
     logger.info("[MARC 942] Creating MARC  942 - Ownership and Origial Call number")
-    collection.df_final_data = marc.create_MARC_942(collection.df_final_data)
+    collection.df_final_data = marc.create_MARC_942(collection.df_final_data, collection.collection_id)
 
     # collection.df_final_data = marc.create_MARC_561(collection.df_final_data)
 
@@ -254,4 +265,11 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    while True:
+        main()
+        batch = input("Run another collection through Preprocess-2? (Y/N)")
+        if batch.lower() != "y":
+            sys.stdout.write("Ending run!")
+            sys.exit()
+        logger.handlers = []
+        logging.shutdown()

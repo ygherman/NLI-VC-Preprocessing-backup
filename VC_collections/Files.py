@@ -1,10 +1,12 @@
 import datetime
 import os
 import platform
+import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from xlsxwriter.exceptions import FileCreateError
 
 
 def get_google_drive_api_path(path):
@@ -339,9 +341,20 @@ def write_excel(df, path, sheets):
             frame.to_excel(writer, sheet_name=sheets[i])
             i += 1
     else:
-        df.to_excel(writer, sheet_name=sheets)
-
-    writer.close()
+        while True:
+            try:
+                df.to_excel(writer, sheet_name=sheets)
+                break
+            except:
+                sys.stderr.write(f"File {path} open! Please close file ")
+                input("Press Enter to continue...")
+    while True:
+        try:
+            writer.close()
+            break
+        except:
+            sys.stderr.write(f"File {path} open! Please close file ")
+        input("Press Enter to continue...")
 
 
 def get_branch_colletionID(branch="", collection_id="", batch=False):

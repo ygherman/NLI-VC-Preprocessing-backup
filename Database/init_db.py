@@ -1,11 +1,13 @@
 from datetime import datetime
 from pony.orm import *
+import update_branch_table
+import update_credit_table
 
 db = Database()
 
 
 class Record(db.Entity):
-    collection = Required("Collection")
+
     mms_id = PrimaryKey(str, auto=True)
     unitid = Required(str, unique=True, index="unitid")
     rootid = Required(str)
@@ -39,6 +41,7 @@ class Record(db.Entity):
     digitization = Optional(str)
     two_side_scan = Optional(str)
     est_files_num = Optional(int)
+    actual_files_num = Optional(int)
     true_files_num = Optional(int)
     language = Optional(str)
     extent = Optional(str)
@@ -58,13 +61,13 @@ class Record(db.Entity):
 
 class Collection(db.Entity):
     collection_id = PrimaryKey(str)
+    branch = Required("Branch")
     name_heb = Optional(str)
     name_eng = Optional(str)
-    branch = Required("Branch")
-    current_owner = Optional(str)
-    records = Set(Record)
     credit_heb = Optional(str)
     credit_eng = Optional(str)
+    current_owner = Optional(str)
+    records = Set(Record)
 
 
 class Branch(db.Entity):
@@ -72,6 +75,12 @@ class Branch(db.Entity):
     name_heb = Optional(str)
     name_eng = Optional(str)
     collections = Set(Collection)
+
+
+
+
+
+
 
 
 def main():
@@ -82,11 +91,11 @@ def main():
 
     db.bind(
         provider="sqlite",
-        filename=r"\\172.0.12.30\Visual_Art\DB\NLI_VC_DB.db",
+        filename=r"\\172.0.12.30\Visual_Art\Master_Catalog\NLI_VC_DB.db",
         create_db=True,
     )
 
-    db.generate_mapping(create_tables=True)
+    # db.generate_mapping(create_tables=True)
 
 
 if __name__ == "__main__":
