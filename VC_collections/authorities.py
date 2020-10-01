@@ -32,6 +32,7 @@ def split_creators_by_type(df, col_name):
     :param df: The original Dataframe
     :param col_name:  the column name which contains the creators
     :return: df: the modified dataframe with two new columns - creators_pers and creators corps
+    @param mode:
     """
 
     for index, row in df.iterrows():
@@ -70,13 +71,13 @@ def split_creators_by_type(df, col_name):
         df.COMBINED_CREATORS = df.COMBINED_CREATORS.str.strip()
     else:
         df.COMBINED_CREATORS = (
-            df["FIRST_CREATOR_PERS"].astype(str)
-            + ";"
-            + df["FIRST_CREATOR_CORP"]
-            + ";"
-            + df["COMBINED_CREATORS_PERS"]
-            + ";"
-            + df["COMBINED_CREATORS_CORPS"]
+                df["FIRST_CREATOR_PERS"].astype(str)
+                + ";"
+                + df["FIRST_CREATOR_CORP"]
+                + ";"
+                + df["COMBINED_CREATORS_PERS"]
+                + ";"
+                + df["COMBINED_CREATORS_CORPS"]
         )
 
     df.COMBINED_CREATORS_CORPS = df.COMBINED_CREATORS_CORPS.str.strip()
@@ -193,7 +194,6 @@ def create_match_file(collection, df_authority_file, df_auth, column):
 
     # fuzzy matching process
     for value in df_auth.index:
-        from fuzzywuzzy import process
 
         match_results[value] = process.extract(value, choices, limit=4)
 
@@ -274,7 +274,7 @@ def find_role(name):
     if "[" in name:
         start = name.find("[") + 1
         role = name[start: name.find("]")]
-        new_name = name.replace(role, "")
+        new_name = name.replace(role, "").replace("[]", "").strip()
         if new_name == "":
             sys.stderr.write(
                 f"problem with creator: {name}, please check! This is the name: {new_name} and this is the role: {role}"
@@ -525,18 +525,23 @@ def clean_creators(collection: Collection) -> Collection:
     ) + list(set(Authority_instance.df_creator_pers_role["CREATOR_PERS_ROLE"]))
 
     creators_cols = [col for col in df.columns if "CREATOR" in col]
-    if "COMBINED_CREATORS" in creators_cols and len(creators_cols):
+
+    if "COMBINED_CREATORS" in creators_cols and len(creators_cols) == 1:
         creators_cols.remove("COMBINED_CREATORS")
         logger.info("[CREATORS] COMBINED_CREATORS found: 1 creators column")
+
         for col in creators_cols:
             df = drop_col_if_exists(df, col)
         df = remove_duplicate_in_column(df, "COMBINED_CREATORS")
+
     elif "FIRST_CREATOR_PERS" in creators_cols:
         df["COMBINED_CREATORS"] = df[creators_cols].apply(
             create_combined_creators, axis=1
         )
 
     assert "COMBINED_CREATORS" in list(df.columns), print(list(df.columns))
+
+    df["COMBINED_CREATORS"] = df["COLLECTION_CREATOR"] + ";" + df["COMBINED_CREATORS"]
 
     roles, role_not_found, temp_role_dict = map_relators(df, authority_role_list)
     df = clean_text_cols(df, "COMBINED_CREATORS")
@@ -553,17 +558,6 @@ def clean_creators(collection: Collection) -> Collection:
     return collection
 
 
-def check_values_against_cvoc(
-    collection: Collection, col: str, mapping_dict: dict
-) -> list:
-    """
-
-    :param collection:
-    :param col:
-    :param mapping_dict:
-    :return:
-    """
-    pass
 
 
 def convert_dict(new_val2errs):

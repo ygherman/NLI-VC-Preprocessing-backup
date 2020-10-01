@@ -16,7 +16,6 @@ from VC_collections.columns import (
     drop_col_if_exists,
     column_exists,
     remove_duplicate_in_column,
-    more_than_one_value_in_cell,
 )
 from VC_collections.explode import explode_col_to_new_df
 from VC_collections.project import get_root_index_and_title, lookup_rosetta_file
@@ -67,11 +66,23 @@ def create_MARC_093(df, collection_id):
         ]
     except:
         sys.stderr.write(
-            f"There is no credit in the credits table for collection {collection_id} {collection_name_heb}"
+            f"There is no credit in the credits table for collection {collection_id}"
         )
-    collection_name_eng = Authority_instance.df_credits.loc[
-        collection_id, "שם הארכיון באנגלית"
-    ]
+        collection_name_heb = input(
+            f"Please enter the hebrew name of the collection {collection_id}: \n"
+        )
+
+    try:
+        collection_name_eng = Authority_instance.df_credits.loc[
+            collection_id, "שם הארכיון באנגלית"
+        ]
+    except:
+        sys.stderr.write(
+            f"There is no credit in the credits table for collection {collection_id}"
+        )
+        collection_name_eng = input(
+            f"Please enter the english name of the collection {collection_id}: \n"
+        )
 
     df["093_1"] = df["093"] + "$$d" + collection_name_heb
     df["093_2"] = df["093"] + "$$d" + collection_name_eng
@@ -226,7 +237,7 @@ def create_MARC_500(df):
     - check if the there a value for [קוד תיק ארכיון] - if yes, concat the value to field 500
     - check if the there a value for [הערות גלוי למשתמש קצה] - if yes, concat the value to field 500
     - check if the there a value for [מילות מפתח_מקומות] - if yes, concat the value to field 500
-    - check if the there a value for [משך] - if yes, concat the value with the prefix "משך" to field 500
+
 
     :param df: The original Dataframe
     :return: The Dataframe with the new 500 field
@@ -254,8 +265,6 @@ def create_MARC_500(df):
             new_value = (
                     new_value + "מקומות המוזכרים בתיק: " + row["מילות מפתח_מקומות"] + "; "
             )
-        if "משך" in list(df.columns.values) and row["משך"] != "":
-            new_value = new_value + "משך ההקלטה: " + row["משך"] + "; "
 
         if new_value == "$$a":
             new_value = ""
@@ -380,35 +389,7 @@ def all_rest_creators(x):
         return ""
 
 
-def name_lang_check(val, mode="PERS"):
-    """
-        Checks the language of a given value (mostly English and Hebrew), in order to add the $e subfield for
-    language encoded information for the 1XX/6XX/7XX MARC21 Fields.
-
-    :param mode: is searching language for person or corporation. Defualt set to PERS
-    :param: val - the string to check the laguage
-    :return: new string for cretor, exchanging adding '$$e' for
-        spaces and $$9 for language
-    :type val: string
-    """
-
-    ad = alphabet_detector.AlphabetDetector()
-
-    val = str(val)
-    val = val.strip()
-
-    if val == "" or val == np.nan:
-        return ""
-
-    # find alphabet - if there is more that one default it's hebrew
-    if len(ad.detect_alphabet(find_name(val))) > 1:
-        lang = "heb"
-    elif len(ad.detect_alphabet(find_name(val))) < 1:
-        lang = "heb"
-    else:
-        lang = ad.detect_alphabet(find_name(val)).pop()[:3].lower()
-
-    # find role
+def add_MARC_role(val, lang):
     role = find_role(val)
 
     if role != "":
@@ -438,6 +419,45 @@ def name_lang_check(val, mode="PERS"):
     return val
 
 
+def name_lang_check(val, mode="PERS"):
+    """
+        Checks the language of a given value (mostly English and Hebrew), in order to add the $e subfield for
+    language encoded information for the 1XX/6XX/7XX MARC21 Fields.
+
+    :param mode: is searching language for person or corporation. Defualt set to PERS
+    :param: val - the string to check the laguage
+    :return: new string for creator, exchanging adding '$$e' for
+        spaces and $$9 for language
+    :type val: string
+    """
+
+    ad = alphabet_detector.AlphabetDetector()
+
+    val = str(val)
+    val = val.strip()
+
+    if val == "" or val == np.nan:
+        return ""
+
+    # find alphabet - if there is more that one default it's hebrew
+    if len(ad.detect_alphabet(find_name(val))) > 1:
+        lang = "heb"
+    elif len(ad.detect_alphabet(find_name(val))) < 1:
+        lang = "heb"
+    else:
+        lang = ad.detect_alphabet(find_name(val)).pop()[:3].lower()
+
+    if mode == "PERS" or mode == "CORPS":
+        val = add_MARC_role(val, lang)
+
+    elif mode == "WORKS":
+        if lang == "heb":
+            val = "$$a" + val + " (יצירה כוריאוגרפית)" + "$$9heb"
+        else:
+            val = f"$$a{val} (Choreographic Work)$$9{lang}"
+    return val
+
+
 def aleph_creators(df, col_name, mode="PERS"):
     """
     fuction's input is the entire table as a dataframe and
@@ -452,21 +472,19 @@ def aleph_creators(df, col_name, mode="PERS"):
         new_creators = list()
         if row[col_name] is None or row[col_name] == "":
             continue
-        creators = row[col_name].split(";")
-        if len(creators) < 1 and creators[0] == "":
-            continue
-
-        elif len(creators) <= 1 and creators[0] != "":
-            creator = name_lang_check(creators[0])
-            df.loc[index, col_name] = creator
-            continue
-
+        elif ";" in str(row[col_name]):
+            creators = row[col_name].split(";")
+        else:
+            creators = [str(row[col_name])]
         for creator in creators:
-            creator = name_lang_check(creator)
-            creator = creator.strip()
-            new_creators.append(creator)
+            if find_name(creators[0]) == "לא ידוע" or find_name(creators[0]) == "ריבוי":
+                continue
+            else:
+                new_creators.append(creator)
 
+        new_creators = [name_lang_check(creator, mode) for creator in new_creators]
         df.loc[index, col_name] = ";".join(new_creators)
+
     df = remove_duplicate_in_column(df, col_name)
     return df
 
@@ -481,6 +499,80 @@ def remove_first_creator_from_700(df):
             df.loc[index, "יוצרים אישים"] = row["יוצרים אישים"].replace(
                 row["יוצר_ראשון"], ""
             )
+    return df
+
+
+def find_unknown_multiple_in_column(row: pd.Series, col_name: str):
+    multiple_creators = []
+    unknown_roles = []
+    new_creators = []
+    if ";" in row[col_name]:
+        creators = row[col_name].split(";")
+    else:
+        creators = [str(row[col_name]).strip()]
+    for creator in creators:
+        creator = creator.strip()
+        if "ריבוי" in find_name(creator):
+            multiple_creators.append(find_role(creator))
+        elif "לא ידוע" in find_name(creator):
+            unknown_roles.append(find_role(creator))
+        elif creator == '':
+            continue
+        else:
+            new_creators.append(creator)
+    return multiple_creators, unknown_roles, new_creators
+
+
+def create_MARC_952_mul_unknown_creators(df):
+    df["952_g"] = ""
+
+    for index, row in df.iterrows():
+        field_952g = "$$g"
+
+        multiple_creators_corps, unknown_roles_corps, new_creators_corps = find_unknown_multiple_in_column(row,
+                                                                                                           "יוצרים מוסדות")
+        multiple_creators_pers, unknown_roles_pers, new_creators_pers = find_unknown_multiple_in_column(row,
+                                                                                                        "יוצרים אישים")
+
+        for creator in row["יוצרים"].split(";"):
+            if "ריבוי" in creator or "לא ידוע" in creator:
+                first_creator_val = ''
+                continue
+            else:
+                first_creator_val = creator
+                break
+
+        multiple_creators = multiple_creators_corps + multiple_creators_pers
+        unknown_roles = unknown_roles_corps + unknown_roles_pers
+
+        new_creators = new_creators_corps + new_creators_pers
+        try:
+            if first_creator_val != '':
+                new_creators.insert(0, first_creator_val)
+                new_creators = list(set(new_creators))
+        except Exception as e:
+            sys.stderr.write(f'Exception occured: {e}')
+
+        if len(new_creators) == 1 and new_creators[0] == '':
+            if len(unknown_roles_pers) == 0 and len(unknown_roles_corps) == 0:
+                sys.stderr.write(f"Error - problem with creators in index: {index}, unitid: {row['סימול']}")
+            else:
+                df.loc[index, "יוצרים"] = ''
+        else:
+            df.loc[index, "יוצרים"] = ";".join(new_creators)
+
+        if len(new_creators_pers) >= 1 and new_creators_pers[0] != '':
+            df.loc[index, "יוצרים אישים"] = ";".join(new_creators_pers)
+
+        if len(new_creators_corps) >= 1 and new_creators_corps[0] != '':
+            df.loc[index, "יוצרים אישים"] = ";".join(new_creators_pers)
+
+        if len(multiple_creators) > 0:
+            field_952g += "Not all creators are cataloged;"
+        if len(unknown_roles) > 0:
+            field_952g += "Creator undetermined: " + ", ".join(unknown_roles)
+        if len(field_952g) > 3:
+            df.loc[index, "952_g"] = field_952g
     return df
 
 
@@ -547,9 +639,9 @@ def create_MARC_100_110(df):
 def create_710_current_owner_val(x):
     ad = alphabet_detector.AlphabetDetector()
     if ad.is_latin(x):
-        return "$$a" + x.rstrip() + "$$9lat$$ecurrent owner"
+        return x.rstrip() + "$$9lat$$ecurrent owner"
     if ad.is_hebrew(x):
-        return "$$a" + x.rstrip() + "$$9heb$$ecurrent owner"
+        return x.rstrip() + "$$9heb$$ecurrent owner"
 
     return x
 
@@ -562,7 +654,7 @@ def create_MARC_710_current_owner(df, df_credits):
             df.loc[df["351"] == "$$cSection Record"].index[0], "בעלים נוכחי"
         ]
         df["7102_current_owner"] = df["בעלים נוכחי"].apply(
-            lambda x: create_710_current_owner_val(x) if x != "" else ""
+            lambda x: "$$a" + create_710_current_owner_val(x) if x != "" else ""
         )
         df = drop_col_if_exists(df, "בעלים נוכחי")
     else:
@@ -611,8 +703,16 @@ def create_MARC_700_710(df, df_credits):
             print("110", row["1102"], "is in 710", lst_7102)
             lst_7102.remove(row["1102"])
 
-        df.loc[index, "7001"] = ";".join(lst_7001)
-        df.loc[index, "7102"] = ";".join(lst_7102)
+        val_700 = ";$$a".join(list(filter(None, lst_7001)))
+        val_710 = ";$$a".join(list(filter(None, lst_7102)))
+        val_700 = val_700.replace("$$a$$a", "$$a")
+        val_710 = val_710.replace("$$a$$a", "$$a")
+
+        if val_700 != "$$a":
+            df.loc[index, "7001"] = val_700
+
+        if val_710 != "$$a":
+            df.loc[index, "7102"] = val_710
 
     df = remove_duplicate_in_column(df, "7001")
     df = remove_duplicate_in_column(df, "7102")
@@ -703,6 +803,7 @@ def create_MARC_306(df):
         """
     if column_exists(df, "משך"):
         df["306"] = df["משך"].str.replace(":", "").strip()
+        df["306"] = df.apply(lambda x: "$a" + x)
     return df
 
 
@@ -725,13 +826,16 @@ def check_values_arch_mat(df, arch_mat_col, arch_mat_mapping_dict):
     return error_values
 
 
-def create_MARC_defualt_copyright(df):
-    df["952"] = (
+def create_MARC_default_copyright(df):
+    df["952_default_copyright"] = (
             "$$aCopyright status not determined; No contract"
             + "$$bNo copyright analysis"
             + "$$cYael Gherman {}".format(datetime.today().strftime("%Y%m%d"))
             + "$$dללא ניתוח מצב זכויות"
     )
+
+    df["952"] = df["952_default_copyright"].astype("str") + df["952_g"]
+
     df["939"] = (
             "$$aאיסור העתקה"
             + "$$uhttp://web.nli.org.il/sites/NLI/Hebrew/library/items-terms-of-use/Pages/nli-copying-prohibited.aspx"
@@ -779,7 +883,7 @@ def create_MARC_655(df):
     try:
         col
     except NameError:
-        sys.stderr("col variable not defined")
+        sys.stderr.write(f"col variable not defined")
         pass
     else:
         arch_mat_col = process.extractOne(col, list(df.columns))[0]
@@ -798,7 +902,9 @@ def create_MARC_655(df):
 
                         broader_terms.append(re.findall(r"\((.*)\)", term)[0])
                     except:
-                        sys.stderr.write(f"[Error] There is a problem with 655 term: {term}")
+                        sys.stderr.write(
+                            f"[Error] There is a problem with 655 term: {term}"
+                        )
             for term in broader_terms:
                 final.append(term.strip())
             final = list(set(final))
@@ -947,7 +1053,7 @@ def create_MARC_952(df):
 
 
         :param df: the entire table
-        :return: the new data frame with the new MARC 540 encoded Field
+        :return: the new data frame with the new MARC 952$f encoded Field
         """
 
     if column_exists(df, "מגבלות פרטיות"):
@@ -958,25 +1064,37 @@ def create_MARC_952(df):
         #     df["540_" + col_number] = df["מגבלות פרטיות"].apply(
         #         lambda x: "$$a" + x if str(x).strip() != "" else ""
         #     )
-        df["952"] = df["מגבלות פרטיות"]
-        df = drop_col_if_exists(df, "מגבלות פרטיות")
+        # df = drop_col_if_exists(df, "מגבלות פרטיות")
+        for index, row in df.iterrows():
+            if ";" in str(row["מגבלות פרטיות"]):
+                privacy_list = row["מגבלות פרטיות"].split(";")
+                privacy_list = ["$$f" + item for item in privacy_list if item != ""]
+                df.loc[index, "מגבלות פרטיות"] = "".join(privacy_list)
+            elif row["מגבלות פרטיות"] != "":
+                df.loc[index, "מגבלות פרטיות"] = "$$f" + row["מגבלות פרטיות"]
+            else:
+                continue
 
-        if more_than_one_value_in_cell(df, "952"):
-            df = explode_col_to_new_df(df, "952")
-            df = drop_col_if_exists(df, "952")
-            last_col = last_index_of_reoccurring_column(df, "952")
+        df["952"] = df["952"].astype(str) + df["מגבלות פרטיות"]
 
-            i = 1
-            while i <= last_col:
-                df["952_" + str(i)] = df["952_" + str(i)].apply(
-                    lambda x: "$$f" + str(x) if str(x).strip() != "" else ""
-                )
-                i += 1
-        else:
-            df["952"] = df["952"].apply(
-                lambda x: "$$f" + str(x) if str(x).strip() != "" else ""
-            )
+        # if more_than_one_value_in_cell(df, "952"):
+        #     df = explode_col_to_new_df(df, "952")
+        #     df = drop_col_if_exists(df, "952")
+        #     last_col = last_index_of_reoccurring_column(df, "952")
+        #
+        #     i = 1
+        #     while i <= last_col:
+        #         df["952_" + str(i)] = df["952_" + str(i)].apply(
+        #             lambda x: "$$f" + str(x) if str(x).strip() != "" else ""
+        #         )
+        #         i += 1
+        # else:
+        #     df["952"] = df["952"].apply(
+        #         lambda x: "$$f" + str(x) if str(x).strip() != "" else ""
+        #     )
         # df = correct_506_privacy(df[df])
+
+    df = drop_col_if_exists(df, "מגבלות פרטיות")
     return df
 
 
@@ -1022,7 +1140,7 @@ def check_date_values_in_row(date_start, date_end, date_free_text, index):
     elif date_free_text != "":
         date_text = date_free_text
     else:
-        sys.stderr(
+        sys.stderr.write(
             f"[DATE] Problem with date columns at index: {index} - please check!"
         )
         sys.exit()
@@ -1069,7 +1187,10 @@ def create_MARC_260_044_008_countries(df, country_col):
 
             # update 008 country
             field_008_country, first_country = map_countries(row[country_col])
-            countries = ["$$e[" + x.strip() + "]" if x != '' else '' for x in row[country_col].split()]
+            countries = [
+                "$$e[" + x.strip() + "]" if x != "" else ""
+                for x in row[country_col].split(";")
+            ]
 
             # update 260  country
             df.loc[index, "260"] = df.loc[index, "260"] + "".join(countries)
@@ -1079,7 +1200,9 @@ def create_MARC_260_044_008_countries(df, country_col):
                 df.loc[index, "044"] = "".join(field_008_country)
 
         else:
-            df.loc[index, "044"] = "xx#"  # code xx# is xx# No place, unknown, or undetermined
+            df.loc[
+                index, "044"
+            ] = "xx#"  # code xx# is xx# No place, unknown, or undetermined
 
     df = remove_duplicate_in_column(df, "044")
     return df
@@ -1128,10 +1251,6 @@ def create_MARC_260_008_date(df, start_date, end_date, text_date):
     # update 008 field
     for index, row in df.iterrows():
 
-        # deal with 008 field
-        # insert date 1 and date 2 in positions 7-14
-        field_008 = list(row["008"])
-
         early_date, late_date = check_date_values_in_row(
             row[start_date], row[end_date], row[text_date], index
         )
@@ -1140,17 +1259,11 @@ def create_MARC_260_008_date(df, start_date, end_date, text_date):
                 f"[DATE] Error with date - check MMS ID {index}, record call number {df.loc[index, 'סימול']}"
             )
 
-        date = str(early_date) + str(late_date)
+        date = f"$$c{str(early_date)}/{str(late_date)}"
         try:
-            for i in range(7, 15):
-                field_008[i] = date[i - 7]
-        except:
-            sys.stderr.write(
-                f"[DATE] Error with date - check MMS ID {index}, record call number {df.loc[index, 'סימול']}"
-            )
-            sys.exit()
-
-        df.loc[index, "008"] = "".join(field_008)
+            df.loc[index, "260"] = row["260"] + date
+        except Exception as e:
+            print(e)
 
     return df
 
@@ -1238,7 +1351,7 @@ def format_cat_date(df):
     df[cat_date_col] = df[cat_date_col].apply(str)
 
     df[cat_date_col] = df[cat_date_col].apply(
-        lambda x: datetime.datetime.strftime(dateutil.parser.parse(x), "%Y%m")
+        lambda x: datetime.strftime(dateutil.parser.parse(x), "%Y%m")
         if len(x) > 6
         else x
     )
@@ -1376,7 +1489,8 @@ def create_MARC_BAS(df):
     :param df: the original Dataframe
     :return: The modified datafrmae with the additional BAS encoded field contaning 'VIS'
     """
-    df["906"] = "$$aVIS"
+    BAS = input("Please fill in the 906/BAS for this collection: \n")
+    df["906"] = f"$$a{BAS.upper()}"
     return df
 
 
@@ -1423,28 +1537,29 @@ def create_MARC_999(df):
     return df
 
 
-def create_MARC_524(df):
+def create_citation_heb(index, collection_name):
+    citation_heb = collection_name + ", " + "הספריה הלאומית, סימול: " + index
+    return citation_heb
+
+
+def create_citation_eng(index, collection_name):
+    citation_eng = (
+            collection_name + ", " + "National Library of Israel, Reference code: " + index
+    )
+    return citation_eng
+
+
+def create_MARC_524(df, collection_id):
     """
         524$$a - Preferred Citation of Described Materials Note
     :param df: 
     :return: 
     """
 
-    collection_name_heb = df.loc[df.index[df["רמת תיאור"] == "Section Record"], "911_1"]
-    collection_name_eng = df.loc[df.index[df["רמת תיאור"] == "Section Record"], "911_2"]
-
-    def create_citation_heb(index, collection_name_heb):
-        citation_heb = collection_name_heb + ", " + "הספריה הלאומית, סימול: " + index
-        return citation_heb
-
-    def create_citation_eng(index, collection_name):
-        citation_eng = (
-                collection_name_eng
-                + ", "
-                + "National Library of Israel, Reference code: "
-                + index
-        )
-        return citation_eng
+    collection_name_heb = Authority_instance.df_credits.loc[collection_id, "שם הארכיון"]
+    collection_name_eng = Authority_instance.df_credits.loc[
+        collection_id, "שם הארכיון באנגלית"
+    ]
 
     for index, row in df.iterrows():
         citation_heb = "$$a" + create_citation_heb(index, collection_name_heb)
@@ -1531,16 +1646,19 @@ def create_MARC_630(df):
     :param: df: the dataframe
 
     """
+
+    ad = alphabet_detector.AlphabetDetector()
+
     if column_exists(df, "מילות מפתח_יצירות"):
         col = "מילות מפתח_יצירות"
-        df = aleph_creators(df, col)
-        df["630 4"] = df[col]
+        df = aleph_creators(df, col, mode="WORKS")
+        df["63004"] = df[col]
         df = drop_col_if_exists(df, "מילות מפתח_יצירות")
 
-        df = explode_col_to_new_df(df, "630 4")
+        df = explode_col_to_new_df(df, "63004")
         df = df.fillna("")
 
-        df = drop_col_if_exists(df, "630 4")
+        df = drop_col_if_exists(df, "63004")
 
     return df
 
@@ -1708,22 +1826,25 @@ def create_MARC_590_digitization_data(row):
 
 
 # TODO refactor this messy messy function with correct column names
-def create_MARC_590(df):
+def create_MARC_590(df, copyright_analysis_done):
     df["590_1"] = df.apply(lambda row: create_MARC_590_digitization_data(row), axis=1)
 
     # TODO - לא כל הרשומות רלוונטיות לזכויות יוצרים - האם לסמן על כל הרשומות כמוכנות לניתוח זכויות יוצרים?
-    if str(input("Copyright Analysis already done? (Y/N)")).lower() == "n":
+    if copyright_analysis_done:
         for index, row in df.iterrows():
             if "לא מוכן" in str(row["הערות לא גלוי למשתמש"]):
-                continue
+                df.loc[index, "הערות לא גלוי למשתמש"] = (
+                        str(row["הערות לא גלוי למשתמש"])
+                        + ";Visual art ready for copyright analysis"
+                )
             else:
-                df.loc[index, "הערות לא גלוי למשתמש"] = str(
-                    row["הערות לא גלוי למשתמש"]) + ";Visual art ready for copyright analysis"
+                continue
+
     df = explode_col_to_new_df(df, "הערות לא גלוי למשתמש", start=2)
     cols_590 = [col for col in list(df.columns) if "הערות לא גלוי למשתמש" in col]
     for col in cols_590:
         new_col = "590" + col[col.find("_"):]
-        df[new_col] = df[col].apply(lambda x: "$$a" + str(x) if str(x) != '' else '')
+        df[new_col] = df[col].apply(lambda x: "$$a" + str(x) if str(x) != "" else "")
 
     return df
 
@@ -1780,7 +1901,9 @@ def create_907_value(dict_907):
             return ""
         else:
             words.append(tag[3:] + value)
-    return "$$" + "$$".join(words)
+    return_val = "$$" + "$$".join(words)
+    return_val.replace("$$$$", "$$")
+    return return_val
 
 
 def add_MARC_907(collection):
@@ -1828,9 +1951,7 @@ def create_035_dict(file):
                     dd["035"] = (
                             "$$" + sb.attributes["code"].value + sb.childNodes[0].data
                     )
-                    if dd["035"].startswith("$$$$"):
-                        dd["035"] = dd["035"][2:]
-
+                    dd["035"] = dd["035"].replace("$$$$", "$$")
         d[mms_id] = dd
     return d
 
@@ -1862,6 +1983,66 @@ def add_MARC_035(collection):
             pass
     collection.df_final_data = df
 
+    return collection
+
+
+def create_952_dict(file):
+    d = {}
+    for record in file.getElementsByTagName("record"):
+        mms_id = next(
+            e.childNodes[0].data
+            for e in record.getElementsByTagName("controlfield")
+            if e.attributes["tag"].value == "001"
+        )
+        dd = {}
+        for e in record.getElementsByTagName("datafield"):
+            if e.attributes["tag"].value == "952":
+                val_952 = list()
+                for sb in e.getElementsByTagName("subfield"):
+                    # dd["952"] = (
+                    #         "$$" + sb.attributes["code"].value + sb.childNodes[0].data
+                    # )
+
+                    val_952.append(
+                        "$$" + sb.attributes["code"].value + sb.childNodes[0].data
+                    )
+                    # if val_952.startswith("$$$$"):
+                    #     val_952 = dd["952"][2:]
+                dd["952"] = "".join(val_952)
+
+        d[mms_id] = dd
+    return d
+
+
+def add_copyright_field_from_alma(collection):
+    rosetta_file_path = lookup_rosetta_file(
+        collection.digitization_path, collection.collection_id
+    )
+    rosetta_file = minidom.parse(rosetta_file_path)
+    dict_952 = create_952_dict(rosetta_file)
+
+    df = collection.df_final_data
+
+    df["952"] = ""
+    for mms_id, row in df.iterrows():
+        try:
+            if mms_id == np.nan:
+                sys.stderr.write(f"this index: {mms_id} for {row['סימול']} is missing")
+            elif str(mms_id) not in dict_952.keys():
+                sys.stderr.write(
+                    f"there is no 952 field for : {mms_id}, for call number {row['סימול']}\n."
+                )
+                sys.exit()
+            elif len(dict_952[str(mms_id)]) == 0:
+                continue
+            else:
+                df.loc[mms_id, "952"] = create_907_value(dict_952[str(mms_id)])
+        except Exception as e:
+            sys.stderr.write(e)
+            pass
+    df["952"] = df["952"].astype("str") + df["952_g"]
+    df = drop_col_if_exists(df, "952_g")
+    collection.df_final_data = df
     return collection
 
 

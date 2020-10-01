@@ -77,12 +77,6 @@ class Branch(db.Entity):
     collections = Set(Collection)
 
 
-
-
-
-
-
-
 def main():
     @db.on_connect(provider="sqlite")
     def sqlite_case_sensitivity(db, connection):

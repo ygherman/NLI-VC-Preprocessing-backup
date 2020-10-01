@@ -42,39 +42,13 @@ class Test_MARC(TestCase):
             }
         )
 
-    def test_more_than_one_value_in_cell(self):
-        from io import StringIO
-        from VC_collections.marc import more_than_one_value_in_cell
 
-        expected_str = """
-col_name
-אין מגבלות פרטיות;פרטיות-הסכמים וחוזה
-פרטיות-הסכמים וחוזים
-פרטיות-נתונים אישיים
-פרטיות-צנעת הפרט
-פרטיות-מידע רפואי
-פרטיות-אחר"""
-
-        data = pd.read_csv(StringIO(expected_str))
-        print(data)
-        print("columns: ", data.columns)
-        result = more_than_one_value_in_cell(data, "col_name")
-        self.assertEqual(result, True)
 
     def test_check_date_values_in_row(self):
         from VC_collections.marc import extract_years_from_text
 
-        self.assertEquals(extract_years_from_text("1930/1990"), ["1930", "1990"])
-        self.assertEquals(extract_years_from_text("[בערך 1940-2018]"), ["1940", "2018"])
-
-    def test_update_008_from_260(self):
-        from VC_collections.marc import update_008_from_260
-
-        countries_correct = "גרמניה;הולנד"
-        countries_false = "ברלין, גרמניה"
-        self.assertEqual(
-            update_008_from_260(countries_correct), (["$$agw", "$$ane"], "gw#")
-        )
+        self.assertEqual(extract_years_from_text("1930/1990"), ["1930", "1990"])
+        self.assertEqual(extract_years_from_text("[בערך 1940-2018]"), ["1940", "2018"])
 
     def test_create_marc_999_values_list(self):
         from VC_collections.marc import create_MARC_999_values_list
@@ -98,12 +72,10 @@ col_name
             "$$aארכיון גור$$9heb$$ecurrent owner", create_710_current_owner_val(heb)
         )
         self.assertEqual(
-            "$$aGoor Archive$$9eng$$ecurrent owner", create_710_current_owner_val(eng)
+            "$$aGoor Archive$$9lat$$ecurrent owner", create_710_current_owner_val(eng)
         )
 
     def test_create_marc_655(self):
-        from VC_collections.marc import create_MARC_655
-
         xl = pd.ExcelFile("Resources/ArBe_test_data.xlsx")
         test_df = xl.parse("קטלוג")
         test_655 = test_df["סוג חומר"]
@@ -116,6 +88,57 @@ col_name
         df = create_MARC_942(test_df, "ArHb")
 
         self.fail()
+
+    def test_create_marc_524(self):
+        xl = pd.ExcelFile("Resources/IL-JIPR-test.xlsx")
+        test_df = xl.parse("קטלוג")
+
+        self.fail()
+
+    def test_create_citation_eng(self):
+        from VC_collections.marc import create_citation_eng
+
+        self.assertEqual(
+            create_citation_eng(
+                "IL-JIPR", "Jerusalem Institute for Policy Research Archive"
+            ),
+            "Jerusalem Institute for Policy Research Archive, National Library of Israel, Reference code: IL-JIPR",
+        )
+
+    def test_add_marc_role(self):
+        from VC_collections.marc import add_MARC_role
+
+        test_data1_pers = "לבנון, אריה [מלחין]"
+        test_data2_corps = "תיאטרון מחול ענבל [מפיק-תאגיד]"
+        test_data3_works = "אשירה לשבזי"
+        self.assertEqual(
+            add_MARC_role(test_data1_pers, "heb"), "$$aלבנון, אריה$$9heb$$eמלחין"
+        )
+        self.assertEqual(
+            add_MARC_role(test_data2_corps, "heb"),
+            "$$aתיאטרון מחול ענבל$$9heb$$eחברת הפקה",
+        )
+
+    def test_name_lang_check(self):
+        from VC_collections.marc import name_lang_check
+
+        test_data_works = "אשירה לשבזי"
+        self.assertEqual(
+            name_lang_check(test_data_works, mode="WORKS"),
+            "$$aאשירה לשבזי (יצירה כוריאוגרפית)$$9heb",
+        )
+
+    def test_create_marc_952_mul_unknown_creators(self):
+        import numpy as np
+        from VC_collections.marc import create_MARC_952_mul_unknown_creators
+
+        xl = pd.ExcelFile(r"Resources\mul_unknown_creators.xlsx")
+        df_test = xl.parse("Data")
+        df_results = xl.parse("Results")
+        df_test_result = create_MARC_952_mul_unknown_creators(df_test)
+        df_test_result = df_test_result.replace(np.nan, "")
+        print(df_test_result)
+        self.assertTrue(df_test_result.equals(df_results.replace(np.nan, "")))
 
 
 if __name__ == "__main__":

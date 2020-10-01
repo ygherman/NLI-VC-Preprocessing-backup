@@ -6,7 +6,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from xlsxwriter.exceptions import FileCreateError
 
 
 def get_google_drive_api_path(path):
@@ -64,6 +63,10 @@ def create_directory(CMS, BASE_PATH):
     digitization_path = BASE_PATH / "Digitization"
     make_sure_path_exists(digitization_path)
 
+    # create a Digitization folder
+    ROS_path = digitization_path / "ROS"
+    make_sure_path_exists(ROS_path)
+
     # create a Authorities folder
     authorities_path = BASE_PATH / "Authorities"
     make_sure_path_exists(authorities_path)
@@ -96,6 +99,13 @@ def create_directory(CMS, BASE_PATH):
         aleph_custom04,
     )
     return var
+
+
+def has_sheet(spreadsheet, sheet_name):
+    for x in spreadsheet.worksheets():
+        if sheet_name == x.title:
+            return True
+    return False
 
 
 def get_collections_in_folder(root_folder):
@@ -134,6 +144,7 @@ def find_newest_file(path, file_name_pattern, mode="start"):
     :returns the newest file by creation date property of the file
 
     """
+    global files
     try:
         if mode == "start":
             files = [
@@ -194,7 +205,56 @@ def get_creation_date(path_to_file):
     # so we'll settle for when its content was last modified.
 
 
-def find_newest_file(path, file_name_pattern, mode="start"):
+def find_newest_file_in_list(files_list: list, file_name_pattern: str, mode: str = "start") -> object:
+    """
+
+    @param files_list: list of file to search
+    @param file_name_pattern: the string pattern for the file name to search for
+    @param mode: where in the file name this patern should be found: start, mid, end.
+    @return: the name of the last updated file
+    """
+    try:
+        if mode == "start":
+            files = [
+                filename
+                for filename in files_list
+                if filename.lower().startswith(file_name_pattern.lower())
+            ]
+
+        elif mode == "mid":
+            files = [
+                filename
+                for filename in files_list
+                if file_name_pattern.lower() in filename.lower()
+            ]
+        elif mode == "end":
+            files = [
+                filename
+                for filename in files_list
+                if filename.lower().endswith(file_name_pattern.lower())
+            ]
+    except OSError:
+        print(f"no file name matching pattern found in files list")
+    finally:
+        pass
+
+    # find the most updated file
+    file_dates = []
+
+    for index, file in enumerate(files):
+        if file.startswith("~$"):
+            continue
+        created = file[-8:]
+        file_dates.append(datetime.datetime.strptime(created, "%Y%m%d"))
+    if len(file_dates) > 0:
+        index, file = max(enumerate(file_dates))
+        print(files[index])
+        return files[index]
+    else:
+        return ""
+
+
+def find_newest_file_in_folder(path, file_name_pattern, mode="start"):
     """
     Function that gets a string pattern with a selected mode
         start - looking for the string pattern at the beginning of the file name
@@ -282,7 +342,7 @@ def get_file_path(stage, df, pattern=""):
         """
         print("is_folder_empty(dir_path):", is_folder_empty(dir_path))
         if dir_path.is_dir() and not is_folder_empty(dir_path):
-            df.loc[index, stage] = dir_path / find_newest_file(
+            df.loc[index, stage] = dir_path / find_newest_file_in_folder(
                 dir_path, collection_id + pattern, mode="mid"
             )
         else:
@@ -365,9 +425,10 @@ def get_branch_colletionID(branch="", collection_id="", batch=False):
     :param batch: if the calling results from a batch process
     :return: The cms, branch and the collection ID
     """
+    CMS = "alma"
     if not batch:
         while True:
-            CMS = "alma"
+
             branch = input(
                 "Please enter the name of the Branch (Architect, Design, Dance, Theater): "
             )

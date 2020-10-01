@@ -1,4 +1,3 @@
-import inspect
 import json
 import logging
 import os
@@ -19,7 +18,11 @@ from pymarc import XMLWriter, Record, Field
 from . import columns
 from .AuthorityFiles import Authority_instance
 from .fieldmapper import catalog_field_mapper, collection_field_mapper
-from .files import create_directory, write_excel
+from .files import (
+    create_directory,
+    write_excel,
+    find_newest_file_in_list,
+)
 from .files import get_google_drive_api_path
 from .project import get_branch_colletionID
 
@@ -59,7 +62,7 @@ def connect_to_google_drive():
     return client
 
 
-def find_catalog_gspread(client, collection_id):
+def choose_catalog_gspread(client, collection_id):
     files = [
         file
         for file in client.list_spreadsheet_files()
@@ -279,7 +282,10 @@ def map_field_names_to_english(col_names: list, mapper: dict) -> list:
 
 
 def add_current_owner(df_collection, df_credits, collection_id):
-    df_collection = df_collection.set_index("סימול האוסף")
+    if "סימול האוסף" in list(df_collection.columns):
+        df_collection = df_collection.set_index("סימול האוסף")
+    elif "סימול הארכיון" in list(df_collection.columns):
+        df_collection = df_collection.set_index("סימול הארכיון")
     if (
             "בעלים נוכחי" in list(df_collection.columns)
             and df_collection.loc[df_collection["רמת תיאור"] == "אוסף", "בעלים נוכחי"][0]
@@ -292,6 +298,25 @@ def add_current_owner(df_collection, df_credits, collection_id):
             return df_collection
 
     return df_collection.reset_index()
+
+
+def find_last_updated_gspread(client, collection_id):
+    files = [
+        file
+        for file in client.list_spreadsheet_files()
+        if collection_id.lower() in file["name"].lower()
+    ]
+    if len(files) == 0:
+        sys.stderr.write(f"no file for {collection_id} found in google drive \n")
+        return client, input("if you have the ID of the file, please enter manually: ")
+
+    file_index = find_newest_file_in_list(files, collection_id + "_final_to_alma_", mode="mid")
+
+    return (
+        client,
+        files[int(file_index)]["id"],
+        files[int(file_index)]["name"],
+    )
 
 
 class Collection:
@@ -556,20 +581,20 @@ class Collection:
             dataframe2export = self.full_catalog
         elif stage == "POST":
             dataframe2export = self.df_final_data
+        dataframe2export.index = dataframe2export.index.astype(str)
         dt_now_temp = datetime.now().strftime("%Y%m%d")
         preprocess_filename = self.data_path_raw / (
                 self.collection_id + "_" + dt_now_temp + "_preprocessing_test.xlsx"
         )
         write_excel(dataframe2export, preprocess_filename, "Catalog")
 
-    def __init__(self, CMS: str, branch: str, collection_id: str):
+    def __init__(self, CMS: str, branch: str, collection_id: str, manual=True):
         """
              Initializer / Instance Attributes
         :param CMS: To which CMS the collection is intended to be imported to
         :param branch: The name of the project branch the collection belongs to (Architect , Design, Dance, Theater)
         :param collection_id: The collection identifier (call number)
         """
-        Authority_instance
 
         self.cms = CMS
         self.branch = branch
@@ -622,11 +647,20 @@ class Collection:
         # set up logger for collection instance
         logger = logging.getLogger(__name__)
 
-        (
-            client,
-            self.google_sheet_file_id,
-            self.google_sheet_file_name,
-        ) = find_catalog_gspread(connect_to_google_drive(), self.collection_id)
+        if manual:
+            (
+                client,
+                self.google_sheet_file_id,
+                self.google_sheet_file_name,
+            ) = choose_catalog_gspread(connect_to_google_drive(), self.collection_id)
+        else:
+            (
+                client,
+                self.google_sheet_file_id,
+                self.google_sheet_file_name,
+            ) = find_last_updated_gspread(
+                connect_to_google_drive(), self.set_collection_id()
+            )
 
         logger.info("Creating ")
 
@@ -637,21 +671,23 @@ class Collection:
         self.df_collection = remove_instructions_row(
             remove_empty_rows(self.dfs["אוסף"])
         )
-        self.df_collection = add_current_owner(
-            self.df_collection, Authority_instance.df_credits, self.collection_id
-        )
-        self.df_personalities = remove_instructions_row(
-            remove_empty_rows(self.dfs["אישים"])
-        )
-        self.df_corporation = remove_instructions_row(
-            remove_empty_rows(self.dfs["מוסדות"])
-        )
-        try:
-            if self.branch != "VC-Design" and self.branch != "Design":
-                work_col = [x for x in self.dfs.keys() if "יצירות" in x][0]
-                self.df_works = self.dfs[work_col]
-        except:
-            pass
+
+        if self.branch != "REI":
+            self.df_collection = add_current_owner(
+                self.df_collection, Authority_instance.df_credits, self.collection_id
+            )
+            self.df_personalities = remove_instructions_row(
+                remove_empty_rows(self.dfs["אישים"])
+            )
+            self.df_corporation = remove_instructions_row(
+                remove_empty_rows(self.dfs["מוסדות"])
+            )
+            try:
+                if self.branch != "VC-Design" and self.branch != "Design":
+                    work_col = [x for x in self.dfs.keys() if "יצירות" in x][0]
+                    self.df_works = self.dfs[work_col]
+            except:
+                pass
 
         self.full_catalog = self.make_one_table()
 
@@ -662,8 +698,8 @@ class Collection:
         ]
 
         if "קטלוג סופי" in self.dfs.keys():
-            if inspect.stack()[1] == "preprocess_1":
-                breakpoint
+            # if inspect.stack()[1] == "preprocess_1":
+            #     breakpoint
 
             self.df_final_data = remove_unnamed_cols(
                 self.dfs["קטלוג סופי"].rename(
@@ -834,12 +870,15 @@ class Collection:
 
     def set_branch(self):
         while True:
-            branch = input(
+            branch: str = input(
                 "Please enter the name of the Branch (Architect, Design, Dance, Theater): "
             )
             branch = str(branch)
             if branch[0].islower():
                 branch = branch.capitalize()
+            if branch.upper() == "REI":
+                branch = branch.upper()
+                break
             if branch not in Collection._project_branches:
                 print("need to choose one of: Architect, Design, Dance, Theater")
                 continue

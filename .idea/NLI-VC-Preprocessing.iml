@@ -9,11 +9,11 @@
       <excludeFolder url="file://$MODULE_DIR$/build" />
       <excludeFolder url="file://$MODULE_DIR$/google_drive_api" />
     </content>
-    <orderEntry type="jdk" jdkName="Python 3.7 (VC_Preprocessing)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Python 3.8" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
   <component name="PackageRequirementsSettings">
-    <option name="requirementsPath" value="" />
+    <option name="requirementsPath" value="C:\Users\Yaelg\Google Drive\National_Library\Python\VC_Preprocessing\requirements.txt" />
   </component>
   <component name="PyDocumentationSettings">
     <option name="format" value="EPYTEXT" />

@@ -42,7 +42,9 @@ def main():
     pdtabulate = lambda df: tabulate(df, headers="keys", tablefmt="psql")
 
     pingstatus = check_vpn()
-    engine = create_engine(r"sqlite:///\\172.0.12.30\Visual_Art\Master_Catalog\NLI_VC_DB.db", echo=True)
+    engine = create_engine(
+        r"sqlite:///\\172.0.12.30\Visual_Art\Master_Catalog\NLI_VC_DB.db", echo=True
+    )
     df = pd.DataFrame(branches, columns=branches.keys())
     df = df.transpose()
 

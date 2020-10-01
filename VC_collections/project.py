@@ -84,7 +84,7 @@ def get_alma_sid(custom04_path, collectionID, df):
     try:
         alma_sysno_file = os.path.join(custom04_path, collectionID + "_alma_sysno.xlsx")
     except:
-        sys.stderr(f"There is no alma_sysno_file File for collection: {collectionID}.")
+        sys.stderr.write(f"There is no alma_sysno_file File for collection: {collectionID}.")
 
     # parse sysno file
     try:
@@ -148,9 +148,6 @@ def get_branch_colletionID(
     """
     if not batch:
         while True:
-            # CMS = input(
-            #     "Preprecessing for Aleph - write 'Aleph'; Preprocessing for Alma - write 'Alma"
-            # )
             CMS = "Alma".lower()
 
             branch = input(
@@ -159,6 +156,9 @@ def get_branch_colletionID(
             branch = str(branch)
             if branch[0].islower():
                 branch = branch.capitalize()
+            if branch.upper() == "REI":
+                branch = branch.upper()
+                break
             if branch not in ["Dance", "Architect", "Theater", "Design"]:
                 print("need to choose one of: Architect, Design, Dance, Theater")
                 continue

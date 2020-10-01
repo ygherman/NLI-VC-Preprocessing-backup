@@ -4,15 +4,16 @@ from pathlib import Path
 
 # class VC_Logger(logging.LoggerAdapter):
 
+
 def show_loggers():
-    loggers = [('root', logging.getLogger())]
+    loggers = [("root", logging.getLogger())]
     for name in sorted(logging.Logger.manager.loggerDict.keys()):
         logger = logging.getLogger(name)
         loggers.append((name, logger))
     for name, logger in loggers:
         indent = ""
-        if name != 'root':
-            indent = "   " * (name.count('.') + 1)
+        if name != "root":
+            indent = "   " * (name.count(".") + 1)
         if logger.propagate:
             prop = "+ "
         else:
@@ -23,9 +24,9 @@ def show_loggers():
         level = logging.getLevelName(logger.level)
         eff_level = logging.getLevelName(logger.getEffectiveLevel())
         if level == eff_level:
-            level_str = ' [%s]' % level
+            level_str = " [%s]" % level
         else:
-            level_str = ' [%s -> %s]' % (level, eff_level)
+            level_str = " [%s -> %s]" % (level, eff_level)
         print(indent + prop + name + level_str + handlers)
 
 

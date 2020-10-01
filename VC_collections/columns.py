@@ -183,8 +183,7 @@ def remove_line_breaks(df):
 
 
 def replace_NaN(df):
-    df = df.replace(np.nan, "", regex=True)
-    return df
+    return df.replace(np.nan, "", regex=True)
 
 
 def clean_tables(collection):

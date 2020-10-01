@@ -2,8 +2,6 @@ import sys
 import time
 import timeit
 
-from tqdm import tqdm
-
 from VC_collections import marc
 from VC_collections.logger import initialize_logger
 
@@ -91,6 +89,12 @@ def main():
     logger.info(f"[245] Creating  MARC 245 - UNITITLE")
     collection.df_final_data = marc.create_MARC_245(collection.df_final_data)
 
+    # creator unknown, multiple creators
+    logger.info("[MARC 952$g multiple and unknown creators] creating 952$g")
+    collection.df_final_data = marc.create_MARC_952_mul_unknown_creators(
+        collection.df_final_data
+    )
+
     # create 110 and 100 (FIRST CREATORS CORPS and PERS) (יוצר ראשון - איש/ יוצר ראשון = מוסד)
     logger.info("[MARC 100/110] Creating  MARC 100/110 - Creators (first)")
     collection.df_final_data = marc.create_MARC_100_110(collection.df_final_data)
@@ -115,6 +119,10 @@ def main():
     logger.info("[MARC 655] Creating  MARC 655 - ARCHIVAL MATERIAL ")
     collection.df_final_data = marc.create_MARC_655(collection.df_final_data)
 
+    # create 630 (WORKS) (יצירות)
+    logger.info("[MARC 630] Creating  MARC 630 - WORKS ")
+    collection.df_final_data = marc.create_MARC_630(collection.df_final_data)
+
     # create 041 (LANGUAGE) (שפה)
     logger.info("[MARC 041] Creating  MARC 041 - LANGUAGE")
     collection.df_final_data = marc.create_MARC_041(collection.df_final_data)
@@ -125,9 +133,18 @@ def main():
     ####################################################
     logger.info("[MARC 939, 903, 952] Creating default copyright fields")
 
-    collection.df_final_data = marc.create_MARC_defualt_copyright(
-        collection.df_final_data
-    )
+    if str(input("Copyright Analysis already done? (Y/N)")).lower() == "n":
+
+        copyright_analysis_done = False
+    else:
+        copyright_analysis_done = True
+
+    if not copyright_analysis_done:
+        collection.df_final_data = marc.create_MARC_default_copyright(
+            collection.df_final_data
+        )
+    else:
+        collection = marc.add_copyright_field_from_alma(collection)
 
     collection.df_final_data = marc.create_default_040(collection.df_final_data)
 
@@ -141,7 +158,11 @@ def main():
         " Updates MARC 008"
     )
     collection.df_final_data = marc.create_MARC_260_008_date(
-        collection.df_final_data, "תאריך מנורמל מוקדם", "תאריך מנורמל מאוחר", "תאריך חופשי")
+        collection.df_final_data,
+        "תאריך מנורמל מוקדם",
+        "תאריך מנורמל מאוחר",
+        "תאריך חופשי",
+    )
 
     # create 260 (DATE fields, and PUBLICATION_COUNTRY) (מדינת פרסום, תאריך מנורמל מוקדם, תאריך מנורמל מאוחר)
     logger.info(
@@ -149,21 +170,28 @@ def main():
         " Updates MARC 008"
     )
     collection.df_final_data = marc.create_MARC_260_044_008_countries(
-        collection.df_final_data, 'מדינת הפרסום/הצילום')
-
-    logger.info("[MARC 952] Creating MARC 952 - Privacy")
-    collection.df_final_data = marc.create_MARC_952(collection.df_final_data)
+        collection.df_final_data, "מדינת הפרסום/הצילום"
+    )
+    if not copyright_analysis_done:
+        logger.info("[MARC 952] Creating MARC 952 - Privacy")
+        collection.df_final_data = marc.create_MARC_952(collection.df_final_data)
 
     # add 597 (CREDIT)
     collection = marc.add_MARC_597(collection)
     logger.info("[MARC 597] Creating MARC 597 - CREDITS")
 
-    # create 921, 933 (CATALOGUER, CATALOGING DATE)
-    logger.info(
-        "[MARC 921/933] Creating MARC 921/933 - CATALOGUERS and CATALOGUING DATE"
-    )
+    # add 524 (CREDIT)
+    logger.info("[MARC 524] Creating MARC 597 - CREDITS")
 
-    collection.df_final_data = marc.create_MARC_921_933(collection.df_final_data)
+    collection = marc.add_MARC_597(collection)
+
+    # create 921, 933 (CATALOGUER, CATALOGING DATE)
+    if collection.branch != "REI":
+        logger.info(
+            "[MARC 921/933] Creating MARC 921/933 - CATALOGUERS and CATALOGUING DATE"
+        )
+
+        collection.df_final_data = marc.create_MARC_921_933(collection.df_final_data)
 
     # create 500 (NOTES) and other fields:
     logger.info("[MARC 500] Creating MARC 500 - NOTES")
@@ -213,11 +241,15 @@ def main():
 
     # create MARC 590
     logger.info("[MARC 590] Creating MARC  590  - HIDDEN NOTES")
-    collection.df_final_data = marc.create_MARC_590(collection.df_final_data)
+    collection.df_final_data = marc.create_MARC_590(
+        collection.df_final_data, copyright_analysis_done
+    )
 
     # create MARC 9421 (formerly 561)
     logger.info("[MARC 942] Creating MARC  942 - Ownership and Origial Call number")
-    collection.df_final_data = marc.create_MARC_942(collection.df_final_data, collection.collection_id)
+    collection.df_final_data = marc.create_MARC_942(
+        collection.df_final_data, collection.collection_id
+    )
 
     # collection.df_final_data = marc.create_MARC_561(collection.df_final_data)
 
@@ -227,7 +259,8 @@ def main():
     logger.info(
         "[MARC 907] Recreating MARC 907 - adding the Rossetta field, link to the digital object (if exists)"
     )
-    collection = marc.add_MARC_907(collection)
+    if input("Add 907 to collection? (y/n)").lower == "y":
+        collection = marc.add_MARC_907(collection)
 
     # recreate 035 MARC field from the ROS\[collection_id]_907.xml file
     logger.info(
@@ -255,7 +288,7 @@ def main():
     ###############################################
     ### export final dataframe to check process ###
     ###############################################
-    # collection.temp_preprocess_file(stage="POST")
+    collection.temp_preprocess_file(stage="POST")
 
     ###############################################
     ###      how much time the process ran?     ###

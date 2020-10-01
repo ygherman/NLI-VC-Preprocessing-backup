@@ -2,11 +2,18 @@ import sys, glob, os
 from pathlib import Path
 from sqlalchemy import create_engine
 import logging
+import pandabase
+import logging
+import json
+import time
+import argparse
 
-sys.path.insert(
-    1, r"C:\Users\Yaelg\Google Drive\National_Library\Python\VC_Preprocessing"
-)
+# sys.path.insert(
+#     1, r"C:\Users\Yaelg\Google Drive\National_Library\Python\VC_Preprocessing"
+# )
 from VC_collections import Collection
+
+# from ..google_drive_api.google_drive_connection import *
 
 column_mapping = {
     "סימול": "unitid",
@@ -42,7 +49,6 @@ column_mapping = {
     "סריקה דו-צדדית": "two_side_scan",
     "מספר קבצים מוערך": "est_files_num",
     "מספר קבצים לאחר דיגיטציה": "actual_files_num",
-
     "שפה": "language",
     "היקף החומר": "extent",
     "משך": "duration",
@@ -59,49 +65,125 @@ column_mapping = {
     "מיקום פיזי": "physloc",
     "חומרים קשורים": "related_materials",
 }
-branches = ['Architect', 'Dance', 'Design', 'Theater']
+branches = ["Architect", "Dance", "Design", "Theater"]
 
 
-def get_all_collections(branches:dict, base_path) -> dict:
+def get_all_collections(branches: dict, base_path) -> dict:
     logging.info("getting all collections in all branches")
     collections = dict()
     for br in branches:
         collections[br] = list()
 
     for branch in branches:
-        for file in glob.glob(os.path.join(base_path, 'VC-' + branch) + '/*'):
-            if '.' in os.path.basename(file):
+        for file in glob.glob(os.path.join(base_path, "VC-" + branch) + "/*"):
+            if "." in os.path.basename(file):
                 continue
             collections[branch].append(os.path.basename(file))
     return collections
 
 
-
 def prepare_table_to_insert(df, collection_id):
     logging.info(f"Preparing {collection_id} to be inserted into DB")
 
-    df = df.rename(columns=column_mapping)
+    df = df.rename(columns=column_mapping).set_index("")
     df.index.name = "mms_id"
     df["collection"] = collection_id
     return df
 
 
+def create_table_for_db(conf_file, client):
+    print([f"Reading conf file: {conf_file}"])
+    with open(conf_file, mode="r") as f:
+        conf = json.load(f)
+        file_id = conf["google_sheet_file_id"]
+
+        all_dfs = Collection.create_xl_from_gspread(client, file_id)
+    return all_dfs["קטלוג סופי"]
+
+
+def configure_parser():
+    my_parser = argparse.ArgumentParser(description="add table as bath")
+    # Add the arguments
+    my_parser.add_argument(
+        "-batch",
+        type=str,
+        help="Specify whether this is a batch update of a batch of catalogs to DB, or a one",
+    )
+    my_parser.add_argument(
+        "-start ",
+        type=str,
+        help="Specify whether with which collection to start the batch, optional",
+    )
+
+    return my_parser
+
+
 def main():
-    base_path = r'C:\Users\Yaelg\Google Drive\National_Library\Python'
+
+    my_parser = configure_parser()
+    args = my_parser.parse_args()
+
+    client = Collection.connect_to_google_drive()
+    count = 0
+    base_path = r"C:\Users\Yaelg\Google Drive\National_Library\Python"
     collections = get_all_collections(branches, base_path)
+    DATABASE = "sqlite:///VC_CATALOGS.sqlite"
+    if args.batch:
+        for branch in branches:
 
-    for branch in branches:
-        for collection_id in collections[branch]:
-            collection = Collection.Collection(CMS="alma", branch=branch, collection_id=collection_id)
+            for collection_id in collections[branch]:
+                print([f"Starting with {branch} / {collection_id}"])
 
-            # collection = Collection.retrieve_collection()
-            df = prepare_table_to_insert(collection.df_final_data, collection.collection_id)
-            engine = create_engine(r"sqlite:///\\172.0.12.30\Visual_Art\Master_Catalog\NLI_VC_DB.db", echo=True)
-            df.to_sql("Record", con=engine, if_exists="append")
-            logging.info(f"commited {branch}/{collection_id}  into DB")
+                conf_file = (
+                    Path(base_path)
+                    / ("VC-" + branch)
+                    / collection_id
+                    / "Data"
+                    / "reports"
+                    / (collection_id + "_metadata.conf")
+                )
+
+                if not os.path.exists(conf_file):
+                    continue
+
+                print([f"Creating table for {branch} / {collection_id}"])
+                df = create_table_for_db(conf_file, client)
+
+                df = prepare_table_to_insert(df, collection_id)
+                print([f"Inserting table into Database"])
+                try:
+                    pandabase.to_sql(
+                        df, table_name="records", con=DATABASE, how="upsert"
+                    )
+                    count += 1
+                except:
+                    sys.stderr.write(
+                        f"Problem with {collection_id}, table was not comminted in the DB"
+                    )
+                    continue
+                print(f"commited {branch}/{collection_id}  into DB")
+                count += 1
+                time.sleep(100)
+                print(f"Collention number: {count}")
+        print(f"total of {count} collections were updated into the database")
+    else:
+        df = Collection.retrieve_collection()
+        df = prepare_table_to_insert(df, collection_id)
+        print([f"Inserting table into Database"])
+        try:
+            pandabase.to_sql(df, table_name="records", con=DATABASE, how="upsert")
+            count += 1
+        except:
+            sys.stderr.write(
+                f"Problem with {collection_id}, table was not comminted in the DB"
+            )
+        print(f"commited {branch}/{collection_id}  into DB")
+
+        print(f"total of {count} collections were updated into the database")
 
 
 if __name__ == "__main__":
+
     main()
 
     # while True:
