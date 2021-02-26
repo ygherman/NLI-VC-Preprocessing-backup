@@ -1,4 +1,4 @@
-aiohttp==3.6.2
+aiohttp==3.7.4
 alphabet-detector==0.0.7
 argon2-cffi==20.1.0
 async-generator==1.10
