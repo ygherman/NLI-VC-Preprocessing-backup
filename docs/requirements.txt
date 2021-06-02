@@ -84,7 +84,7 @@ termcolor==1.1.0
 tornado==6.0.4
 tqdm==4.47.0
 uritemplate==3.0.1
-urllib3==1.25.10
+urllib3==1.26.5
 wxPython==4.0.7.post2
 xlrd==1.2.0
 XlsxWriter==1.2.7
